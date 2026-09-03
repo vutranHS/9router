@@ -2,12 +2,13 @@
  * Unit tests for open-sse/utils/claudeCloaking.js
  *
  * Tests cover:
+ *  - applyCloaking() - billing header client version
  *  - cloakClaudeTools() - tool renaming and forced tool_choice suffixing
  *  - decloakStreamChunk() - restoring tool names in streamed Claude SSE events
  */
 
 import { describe, it, expect } from "vitest";
-import { cloakClaudeTools, decloakStreamChunk } from "../../open-sse/utils/claudeCloaking.js";
+import { applyCloaking, cloakClaudeTools, decloakStreamChunk } from "../../open-sse/utils/claudeCloaking.js";
 import { CLAUDE_TOOL_SUFFIX } from "../../open-sse/config/appConstants.js";
 
 describe("cloakClaudeTools", () => {
@@ -73,6 +74,20 @@ describe("cloakClaudeTools", () => {
     const { body, toolNameMap } = cloakClaudeTools(input);
     expect(body).toBe(input);
     expect(toolNameMap).toBeNull();
+  });
+});
+
+describe("applyCloaking", () => {
+  it("uses the supported Claude Code version in the billing header", () => {
+    const body = applyCloaking(
+      { messages: [{ role: "user", content: "hi" }] },
+      "test-sk-ant-oat-token",
+      "00000000-0000-4000-8000-000000000000"
+    );
+
+    expect(body.system[0].text).toMatch(
+      /^x-anthropic-billing-header: cc_version=2\.1\.259\.[0-9a-f]{3};/
+    );
   });
 });
 
