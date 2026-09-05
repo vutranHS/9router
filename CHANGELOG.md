@@ -1,3 +1,10 @@
+# v0.5.67 (2026-09-05)
+
+## Fixes
+- **API keys**: permissions now list manually added models (custom models and
+  legacy `alias -> provider/model` entries) alongside the static catalog, so a
+  model added by hand on a provider page can be whitelisted on a restricted key
+
 # v0.5.62 (2026-08-31)
 
 ## Changes
