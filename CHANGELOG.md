@@ -1,3 +1,12 @@
+# v0.5.70 (2026-09-08)
+
+## Fixes
+- **Codex**: bump spoofed CLI version to `0.153.4` — ChatGPT backend rejected GPT-5.6 Sol/Terra/Luna image generation with `requires a newer version of Codex` because the `version` header still advertised `0.136.0`
+- **Codex**: drop `gpt-5.4-image` and `gpt-5.3-image` — OpenAI no longer serves them to ChatGPT accounts (`model is not supported when using Codex with a ChatGPT account`)
+
+## CI
+- Keep only the CLI release workflow (build + publish the `.tgz`); drop Docker and GitBook publishing
+
 # v0.5.69 (2026-09-05)
 
 ## Features
