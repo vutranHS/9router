@@ -1,3 +1,8 @@
+# v0.5.76 (2026-09-11)
+
+## Fixes
+- **Codex**: carry `gpt-image-*` generation on `gpt-5.6-luna` instead of `gpt-5.5` — the image tool is the same either way (the carrier spends no reasoning tokens), and luna measured cheaper against the subscription rate-limit window
+
 # v0.5.75 (2026-09-10)
 
 ## Features
