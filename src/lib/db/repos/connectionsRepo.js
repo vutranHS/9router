@@ -211,6 +211,7 @@ export async function createProviderConnection(data) {
   return result;
 }
 
+// A synchronous updater can inspect current state and return null to skip the write.
 // Critical: OAuth refresh token race — atomic merge inside transaction
 export async function updateProviderConnection(id, data) {
   const db = await getAdapter();
@@ -219,10 +220,12 @@ export async function updateProviderConnection(id, data) {
     const row = db.get(`SELECT * FROM providerConnections WHERE id = ?`, [id]);
     if (!row) { result = null; return; }
     const existing = rowToConn(row);
-    const normalized = resetHealthStateOnActivation(existing, data);
+    const patch = typeof data === "function" ? data(existing) : data;
+    if (!patch) { result = existing; return; }
+    const normalized = resetHealthStateOnActivation(existing, patch);
     const merged = { ...existing, ...normalized, updatedAt: new Date().toISOString() };
     upsert(db, merged);
-    if (data.priority !== undefined) reorderInTx(db, existing.provider);
+    if (patch.priority !== undefined) reorderInTx(db, existing.provider);
     result = merged;
   });
   return result;

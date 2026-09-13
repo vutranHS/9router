@@ -253,8 +253,8 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
     newBackoffLevel = 0;
   } else if (resetsAtMs && resetsAtMs > Date.now()) {
     shouldFallback = true;
-    // Antigravity quota API provides exact per-model resetAt. Do not truncate it.
-    cooldownMs = resolveProviderId(provider) === "antigravity"
+    // Codex session/weekly and Antigravity quota resets are authoritative.
+    cooldownMs = ["codex", "antigravity"].includes(resolveProviderId(provider))
       ? resetsAtMs - Date.now()
       : Math.min(resetsAtMs - Date.now(), MAX_RATE_LIMIT_COOLDOWN_MS);
     newBackoffLevel = 0;
@@ -265,6 +265,14 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
 
   const reason = typeof errorText === "string" ? errorText.slice(0, 100) : "Provider error";
   const lockUpdate = buildModelLockUpdate(githubResetAtMs ? null : model, cooldownMs);
+  if (resolveProviderId(provider) === "codex" && model) {
+    // Remember which locks came from usage exhaustion, not auth/capacity errors.
+    const key = Object.keys(lockUpdate)[0];
+    const quotaLocks = { ...conn?.codexQuotaLocks };
+    if (status === 429 && resetsAtMs > Date.now()) quotaLocks[key] = lockUpdate[key];
+    else delete quotaLocks[key];
+    lockUpdate.codexQuotaLocks = quotaLocks;
+  }
 
   await updateProviderConnection(connectionId, {
     ...lockUpdate,

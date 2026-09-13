@@ -6,6 +6,33 @@ import { getUsageForProvider } from "open-sse/services/usage.js";
 import { getExecutor } from "open-sse/executors/index.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { USAGE_APIKEY_PROVIDERS } from "@/shared/constants/providers";
+import { getModelsByProviderId } from "open-sse/config/providerModels.js";
+import { modelKind, modelQuotaFamily } from "open-sse/providers/models/schema.js";
+import { getModelLockKey, getEarliestModelLockUntil, MODEL_LOCK_PREFIX } from "open-sse/services/accountFallback.js";
+
+function codexQuotaRecoveryUpdate(current, snapshot, usage) {
+  // A quota read must not undo errors recorded while that read was in flight.
+  if (current.provider !== "codex" || current.lastErrorAt !== snapshot.lastErrorAt) return null;
+  const locks = Object.keys(current).filter((key) => key.startsWith(MODEL_LOCK_PREFIX) && current[key]);
+  // Older records lack per-model provenance. Only a single known usage lock is unambiguous.
+  const legacyUsageLock = !current.codexQuotaLocks && locks.length === 1 &&
+    current.errorCode === 429 && /usage.limit|quota/i.test(current.lastError || "");
+  const patch = {};
+  const quotaLocks = { ...current.codexQuotaLocks };
+  for (const model of getModelsByProviderId("codex")) {
+    const key = getModelLockKey(model.id);
+    if (modelKind(model) !== "llm" || usage.quotaAvailable?.[modelQuotaFamily(model)] !== true) continue;
+    if (!current[key] || current[key] !== snapshot[key]) continue;
+    if (!legacyUsageLock && quotaLocks[key] !== current[key]) continue;
+    patch[key] = null;
+    delete quotaLocks[key];
+  }
+  if (Object.keys(patch).length === 0) return null;
+  patch.codexQuotaLocks = quotaLocks;
+  // Activation clears every lock in the DB, so only use it when no active lock remains.
+  if (!getEarliestModelLockUntil({ ...current, ...patch })) patch.testStatus = "active";
+  return patch;
+}
 
 // Detect auth-expired messages returned by usage providers instead of throwing
 const AUTH_EXPIRED_PATTERNS = ["expired", "authentication", "unauthorized", "401", "re-authorize"];
@@ -181,6 +208,10 @@ export async function GET(request, { params }) {
       } catch (retryError) {
         console.warn(`[Usage] ${connection.provider}: force refresh failed: ${retryError.message}`);
       }
+    }
+
+    if (connection.provider === "codex" && usage.quotaAvailable) {
+      await updateProviderConnection(connection.id, (current) => codexQuotaRecoveryUpdate(current, connection, usage));
     }
 
     return Response.json(usage);

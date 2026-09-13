@@ -457,6 +457,10 @@ export function parseQuotaData(provider, data) {
             else if (quotaType === "review_session") displayName = "Review (5h)";
             else if (quotaType === "review_weekly") displayName = "Review (Weekly)";
 
+            if (quota.windowSeconds === 7 * 24 * 60 * 60) {
+              displayName = displayName.replace("5h", "Weekly");
+            }
+
             normalizedQuotas.push({
               name: displayName,
               quotaType,

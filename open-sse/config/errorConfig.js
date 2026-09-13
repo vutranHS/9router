@@ -38,7 +38,7 @@ export const BACKOFF_CONFIG = {
 // Default cooldown for transient/unknown errors
 export const TRANSIENT_COOLDOWN_MS = 30 * 1000;
 
-// Hard cap for provider-reported rate limit cooldown (e.g. codex resets_at can be 5-6h)
+// Cap for provider-reported cooldowns without authoritative quota reset handling.
 export const MAX_RATE_LIMIT_COOLDOWN_MS = 30 * 60 * 1000;
 
 // Cooldown durations (ms)

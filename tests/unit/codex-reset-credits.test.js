@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mocks = vi.hoisted(() => ({
   proxyAwareFetch: vi.fn(),
   getProviderConnectionById: vi.fn(),
+  updateProviderConnection: vi.fn(),
   resolveConnectionProxyConfig: vi.fn(),
   refreshAndUpdateCredentials: vi.fn(),
   getCodexRateLimitResetCredits: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("open-sse/index.js", () => ({}));
 
 vi.mock("@/lib/localDb", () => ({
   getProviderConnectionById: mocks.getProviderConnectionById,
+  updateProviderConnection: mocks.updateProviderConnection,
 }));
 
 vi.mock("@/lib/network/connectionProxy", () => ({
@@ -205,5 +207,33 @@ describe("Codex reset credits", () => {
       expect.any(String),
       expect.objectContaining({ strictProxy: false }),
     );
+    expect(mocks.updateProviderConnection).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])("POST lifts cooldown only after a successful credit reset (success=%s)", async (success) => {
+    const connection = {
+      id: "conn_1", provider: "codex", authType: "access_token", accessToken: "token",
+      "modelLock_gpt-5.4": "2026-09-21T00:00:00.000Z",
+      testStatus: "unavailable", errorCode: 429, backoffLevel: 4,
+    };
+    mocks.getProviderConnectionById.mockResolvedValue(connection);
+    mocks.consumeCodexRateLimitResetCredit.mockResolvedValue({
+      ok: success, status: success ? 200 : 502,
+      code: success ? "reset" : "error", windowsReset: success ? 2 : 0,
+    });
+
+    const { POST } = await import("../../src/app/api/usage/[connectionId]/codex-reset-credits/route.js");
+    const response = await POST(new Request("http://localhost/api/usage/conn_1/codex-reset-credits", { method: "POST" }), {
+      params: Promise.resolve({ connectionId: "conn_1" }),
+    });
+
+    expect(response.status).toBe(success ? 200 : 502);
+    if (success) {
+      expect(mocks.updateProviderConnection).toHaveBeenCalledWith("conn_1", {
+        testStatus: "active",
+      });
+    } else {
+      expect(mocks.updateProviderConnection).not.toHaveBeenCalled();
+    }
   });
 });
