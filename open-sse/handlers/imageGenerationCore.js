@@ -174,6 +174,8 @@ export async function handleImageGenerationCore({
         requestBody,
         model,
         body,
+        connectionId: credentials?.connectionId,
+        connectionName: credentials?.connectionName,
       });
       // Codex streaming case: returns an SSE Response directly
       if (parsed?.sseResponse) {

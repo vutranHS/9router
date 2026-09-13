@@ -22,6 +22,7 @@ import { CodexExecutor } from "../../open-sse/executors/codex.js";
 import { parseUpstreamError } from "../../open-sse/utils/error.js";
 import { getProviderCredentials, markAccountUnavailable } from "../../src/sse/services/auth.js";
 import { handleImageGeneration } from "../../src/sse/handlers/imageGeneration.js";
+import * as log from "@/sse/utils/logger.js";
 
 const now = new Date("2026-09-14T03:00:00.000Z");
 const model = "gpt-5.4";
@@ -44,6 +45,22 @@ afterEach(() => {
 });
 
 describe("Codex usage cooldown", () => {
+  it("connects image SSE diagnostics to the server logger with account context", async () => {
+    account.name = "Test Account";
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      'event: response.failed\ndata: {"response":{"status":"failed","error":{"code":"image_error","message":"Image tool failed"}}}\n\n',
+    )));
+    const response = await handleImageGeneration(new Request("http://localhost/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "cx/gpt-image-2.5-sunburst", prompt: "test" }),
+    }));
+    expect(response.status).toBe(502);
+    expect(log.warn).toHaveBeenCalledWith("IMAGE", "Codex image stream failed", expect.objectContaining({
+      connectionId: account.id, account: "Test Account", model: "gpt-image-2.5-sunburst", errorCode: "image_error",
+    }));
+  });
+
   it.each([
     ["resets_at", 5 * 3600],
     ["resets_in_seconds", 6 * 24 * 3600],

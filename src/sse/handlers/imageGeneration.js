@@ -111,6 +111,7 @@ async function handleSingleModelImage(body, modelStr, { wantsStream, binaryOutpu
       body,
       modelInfo: { provider, model },
       credentials: refreshedCredentials,
+      log: { warn: log.warn },
       streamToClient: wantsStream,
       binaryOutput,
       onCredentialsRefreshed: async (newCreds) => {
