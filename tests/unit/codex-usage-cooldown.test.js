@@ -4,16 +4,24 @@ const db = vi.hoisted(() => ({
   getProviderConnections: vi.fn(),
   updateProviderConnection: vi.fn(),
   getSettings: vi.fn(async () => ({})),
+  getModelAliases: vi.fn(async () => ({})),
+  getComboByName: vi.fn(async () => null),
+  getProviderNodes: vi.fn(async () => []),
 }));
 vi.mock("@/lib/localDb", () => db);
 vi.mock("@/lib/network/connectionProxy", () => ({
   resolveConnectionProxyConfig: vi.fn(async () => ({})),
 }));
 vi.mock("@/sse/utils/logger.js", () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn() }));
+vi.mock("@/sse/services/tokenRefresh.js", () => ({
+  checkAndRefreshToken: async (_provider, credentials) => credentials,
+  updateProviderCredentials: vi.fn(),
+}));
 
 import { CodexExecutor } from "../../open-sse/executors/codex.js";
 import { parseUpstreamError } from "../../open-sse/utils/error.js";
 import { getProviderCredentials, markAccountUnavailable } from "../../src/sse/services/auth.js";
+import { handleImageGeneration } from "../../src/sse/handlers/imageGeneration.js";
 
 const now = new Date("2026-09-14T03:00:00.000Z");
 const model = "gpt-5.4";
@@ -32,9 +40,42 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("Codex usage cooldown", () => {
+  it.each([
+    ["resets_at", 5 * 3600],
+    ["resets_in_seconds", 6 * 24 * 3600],
+    ["missing reset", null],
+  ])("keeps image usage cooldown through the full request flow (%s)", async (field, seconds) => {
+    const resetAt = now.getTime() + (seconds ?? 2) * 1000;
+    const imageModel = "gpt-image-2.5-sunburst";
+    const lockKey = `modelLock_${imageModel}`;
+    const fetchMock = vi.fn(async () => Response.json({ error: {
+      type: "usage_limit_reached",
+      message: "The usage limit has been reached",
+      ...(seconds ? { [field]: field === "resets_at" ? resetAt / 1000 : seconds } : {}),
+    } }, { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = () => handleImageGeneration(new Request("http://localhost/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: `cx/${imageModel}`, prompt: "A green square" }),
+    }));
+
+    expect((await request()).status).toBe(429);
+    expect(account[lockKey]).toBe(new Date(resetAt).toISOString());
+    if (seconds) {
+      expect(account.codexQuotaLocks[lockKey]).toBe(account[lockKey]);
+      vi.setSystemTime(now.getTime() + 31 * 60 * 1000);
+      expect((await request()).status).toBe(429);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    }
+    vi.setSystemTime(resetAt);
+    expect(await getProviderCredentials("codex", null, imageModel)).toMatchObject({ connectionId: account.id });
+  });
+
   it.each([
     ["5-hour", 5 * 3600, "resets_at"],
     ["weekly with session quota available", 6 * 24 * 3600, "resets_at"],
