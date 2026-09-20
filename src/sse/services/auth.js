@@ -1,4 +1,4 @@
-import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings, getProxyPools } from "@/lib/localDb";
+import { getProviderConnections, getApiKeys, validateApiKey, updateProviderConnection, getSettings, getProxyPools } from "@/lib/localDb";
 import { resolveConnectionProxyConfig, pickProxyPoolId } from "@/lib/network/connectionProxy";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
@@ -70,6 +70,15 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     }
 
     const connections = await getProviderConnections({ provider: providerId, isActive: true });
+    const requestKey = options?.apiKey || null;
+    // A shared account remains opt-in: only its selected, currently-active key
+    // IDs may use it. Unconfigured accounts stay normal candidates.
+    const hasSharedConnection = connections.some((connection) => connection?.quotaSharing?.enabled);
+    const activeKeys = hasSharedConnection && requestKey ? (await getApiKeys()).filter((key) => key.isActive && key.key === requestKey) : [];
+    const requestKeyId = activeKeys[0]?.id || null;
+    const sharingFor = (connection) => connection?.quotaSharing?.enabled
+      ? connection.quotaSharing : null;
+    const preferredSharing = preferredConnectionId ? sharingFor(connections.find((c) => c.id === preferredConnectionId)) : null;
     log.debug("AUTH", `${provider} | total connections: ${connections.length}, excludeIds: ${excludeSet.size > 0 ? [...excludeSet].join(",") : "none"}, model: ${model || "any"}`);
 
     if (connections.length === 0) {
@@ -84,6 +93,9 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     // Filter out model-locked, excluded, and Antigravity quota-exhausted connections.
     const availableConnections = connections.filter(c => {
       if (excludeSet.has(c.id)) return false;
+      const sharing = sharingFor(c);
+      if (sharing && (!requestKeyId || !Array.isArray(sharing.apiKeyIds) || !sharing.apiKeyIds.includes(requestKeyId))) return false;
+      if (sharing && options?.quotaRoute !== "chat") return false;
       if (isModelLockActive(c, model)) return false;
       // Antigravity: skip if live quota exhausted for this model
       if (isAntigravity && model && antigravityQuotaCache) {
@@ -107,7 +119,33 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       }
     });
 
+    if (preferredSharing && (!requestKeyId || !Array.isArray(preferredSharing.apiKeyIds) || !preferredSharing.apiKeyIds.includes(requestKeyId))) {
+      return {
+        accessDenied: true,
+        status: requestKey ? 403 : 401,
+        error: requestKey ? "API key is not allowed to use this shared account" : "An API key is required for this shared account",
+      };
+    }
+
+    if (preferredSharing && options?.quotaRoute !== "chat") {
+      return { accessDenied: true, status: 429, error: "Automatic quota sharing currently supports chat requests only" };
+    }
+
     if (availableConnections.length === 0) {
+      const sharedConnections = connections.filter((c) => sharingFor(c));
+      if (sharedConnections.length > 0 && sharedConnections.length === connections.length && sharedConnections.every((connection) => {
+        const ids = sharingFor(connection)?.apiKeyIds;
+        return !requestKeyId || !Array.isArray(ids) || !ids.includes(requestKeyId);
+      })) {
+        return {
+          accessDenied: true,
+          status: requestKey ? 403 : 401,
+          error: requestKey ? "API key is not allowed to use the configured shared account" : "An API key is required for the configured shared account",
+        };
+      }
+      if (sharedConnections.length > 0 && sharedConnections.length === connections.length && options?.quotaRoute !== "chat") {
+        return { accessDenied: true, status: 429, error: "Automatic quota sharing currently supports chat requests only" };
+      }
       // Find earliest persistent lock or lazy Antigravity quota-cache reset for retry timing.
       const lockedConns = connections.filter(c => isModelLockActive(c, model));
       const expiries = lockedConns.map(c => getEarliestModelLockUntil(c)).filter(Boolean);
@@ -215,6 +253,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
         vercelRelayUrl: resolvedProxy.vercelRelayUrl || "",
       },
       connectionId: connection.id,
+      quotaApiKeyId: requestKeyId,
       // Include current status for optimization check
       testStatus: connection.testStatus,
       lastError: connection.lastError,

@@ -1,4 +1,6 @@
 // Pricing rates for AI models — all rates in $/1M tokens
+// Defaults are Standard text-token estimates, not subscription quota percentages.
+// Fast/Batch/Flex, regional uplifts, tool fees and cache storage are not included.
 //
 // Fallback order (first match wins):
 //   1. PROVIDER_PRICING[provider][model]  — provider-specific override
@@ -7,90 +9,146 @@
 
 /**
  * Canonical model pricing — provider-agnostic.
- * Cover all known models; deduplicated across providers.
+ * Verified rates cite their source/date below; older aliases and broad fallbacks remain estimates.
  */
 export const MODEL_PRICING = {
   // === Anthropic / Claude ===
+  "claude-opus-4":                   { input: 15, output: 75, cached: 1.5, reasoning: 75, cache_creation: 18.75 },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-21)
+  "claude-fable-5-1":             { input: 10.00, output: 50.00, cached: 0.25,  reasoning: 50.00,  cache_creation: 12.50, cache_creation_1h: 20.00 },
+  "claude-opus-5":                { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25,  cache_creation_1h: 10.00 },
+  "claude-sonnet-5":              { input: 2.00,  output: 10.00, cached: 0.20,  reasoning: 10.00,  cache_creation: 2.50,  cache_creation_1h: 4.00 },
   "claude-opus-4-6":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
   "claude-opus-4-5-20251101":     { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
   "claude-sonnet-4-6":            { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
   "claude-sonnet-4-5-20250929":   { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
   "claude-haiku-4-5-20251001":    { input: 1.00,  output: 5.00,  cached: 0.10,  reasoning: 5.00,   cache_creation: 1.25  },
-  "claude-sonnet-4-20250514":     { input: 3.00,  output: 15.00, cached: 1.50,  reasoning: 15.00,  cache_creation: 3.00  },
-  "claude-opus-4-20250514":       { input: 15.00, output: 25.00, cached: 7.50,  reasoning: 112.50, cache_creation: 15.00 },
-  "claude-3-5-sonnet-20241022":   { input: 3.00,  output: 15.00, cached: 1.50,  reasoning: 15.00,  cache_creation: 3.00  },
-  "claude-haiku-4.5":             { input: 0.50,  output: 2.50,  cached: 0.05,  reasoning: 3.75,   cache_creation: 0.50  },
-  "claude-opus-4.1":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 37.50,  cache_creation: 5.00  },
-  "claude-opus-4.5":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 37.50,  cache_creation: 5.00  },
-  "claude-opus-4.6":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 37.50,  cache_creation: 5.00  },
-  "claude-sonnet-4":              { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 22.50,  cache_creation: 3.00  },
-  "claude-sonnet-4.5":            { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 22.50,  cache_creation: 3.00  },
-  "claude-sonnet-4.6":            { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 22.50,  cache_creation: 3.00  },
-  "claude-opus-4-5-thinking":     { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 37.50,  cache_creation: 5.00  },
-  "claude-opus-4-6-thinking":     { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 37.50,  cache_creation: 5.00  },
+  "claude-sonnet-4-20250514":     { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
+  "claude-opus-4-20250514":       { input: 15.00, output: 75.00, cached: 1.50,  reasoning: 75.00,  cache_creation: 18.75 },
+  "claude-3-5-sonnet-20241022":   { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
+  "claude-haiku-4.5":             { input: 1.00,  output: 5.00,  cached: 0.10,  reasoning: 5.00,   cache_creation: 1.25  },
+  "claude-opus-4.1":              { input: 15.00, output: 75.00, cached: 1.50,  reasoning: 75.00,  cache_creation: 18.75 },
+  "claude-opus-4.5":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
+  "claude-opus-4.6":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
+  "claude-sonnet-4":              { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
+  "claude-sonnet-4.5":            { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
+  "claude-sonnet-4.6":            { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
+  "claude-opus-4-5-thinking":     { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
+  "claude-opus-4-6-thinking":     { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
   "claude-fable-5":               { input: 10.00, output: 50.00, cached: 1.00,  reasoning: 50.00,  cache_creation: 12.50 },
 
   // === OpenAI / GPT ===
-  "gpt-3.5-turbo":                { input: 0.50,  output: 1.50,  cached: 0.25,  reasoning: 2.25,   cache_creation: 0.50  },
-  "gpt-4":                        { input: 2.50,  output: 10.00, cached: 1.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-4-turbo":                  { input: 10.00, output: 30.00, cached: 5.00,  reasoning: 45.00,  cache_creation: 10.00 },
-  "gpt-4o":                       { input: 2.50,  output: 10.00, cached: 1.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-4o-mini":                  { input: 0.15,  output: 0.60,  cached: 0.075, reasoning: 0.90,   cache_creation: 0.15  },
-  "gpt-4.1":                      { input: 2.50,  output: 10.00, cached: 1.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-5":                        { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  },
-  "gpt-5-mini":                   { input: 0.25,  output: 2.00,  cached: 0.125, reasoning: 2.00,   cache_creation: 0.25  },
-  "gpt-5-codex":                  { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  },
-  "gpt-5.1":                      { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  },
-  "gpt-5.1-codex":                { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  },
-  "gpt-5.1-codex-mini":           { input: 1.50,  output: 6.00,  cached: 0.75,  reasoning: 9.00,   cache_creation: 1.50  },
-  "gpt-5.1-codex-mini-high":      { input: 2.00,  output: 8.00,  cached: 1.00,  reasoning: 12.00,  cache_creation: 2.00  },
-  "gpt-5.1-codex-max":            { input: 8.00,  output: 32.00, cached: 4.00,  reasoning: 48.00,  cache_creation: 8.00  },
-  "gpt-5.2":                      { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  },
-  "gpt-5.2-codex":                { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  },
-  "gpt-5.3-codex":                { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  },
-  "gpt-5.3-codex-spark":         { input: 3.00,  output: 12.00, cached: 0.30,  reasoning: 12.00,  cache_creation: 3.00  },
-  "gpt-5.6":                      { input: 2.50,  output: 15.00, cached: 0.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-5.6-luna":                 { input: 1.00,  output: 6.00,  cached: 0.10,  reasoning: 6.00,   cache_creation: 1.00  },
-  "gpt-5.6-terra":                { input: 2.50,  output: 15.00, cached: 0.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-5.6-sol":                  { input: 5.00,  output: 30.00, cached: 0.50,  reasoning: 30.00,  cache_creation: 5.00  },
-  "gpt-6-astra":                  { input: 5.00,  output: 30.00, cached: 0.50,  reasoning: 30.00,  cache_creation: 5.00  },
-  "o1":                           { input: 15.00, output: 60.00, cached: 7.50,  reasoning: 90.00,  cache_creation: 15.00 },
-  "o1-mini":                      { input: 3.00,  output: 12.00, cached: 1.50,  reasoning: 18.00,  cache_creation: 3.00  },
+  "gpt-3.5-turbo-1106": { input: 1, output: 2, reasoning: 2, reasoning_included: true, cache_creation: 1 },
+  "gpt-3.5-turbo-instruct": { input: 1.5, output: 2, reasoning: 2, reasoning_included: true, cache_creation: 1.5 },
+  // OpenAI output counts already include reasoning: https://developers.openai.com/api/docs/guides/reasoning
+  // Standard text rates: https://developers.openai.com/api/docs/pricing (2026-09-21).
+  // Sol is promotional through at least 2026-11-21. Bare gpt-5.6 and Spark remain unverified estimates.
+  "gpt-3.5-turbo":                   { input: 0.5, output: 1.5, reasoning: 1.5, reasoning_included: true, cache_creation: 0.5 },
+  "gpt-4":                           { input: 30, output: 60, reasoning: 60, reasoning_included: true, cache_creation: 30 },
+  "gpt-4-turbo":                     { input: 10, output: 30, reasoning: 30, reasoning_included: true, cache_creation: 10 },
+  "gpt-4o":                          { input: 2.5, output: 10, cached: 1.25, reasoning: 10, reasoning_included: true, cache_creation: 2.5 },
+  "gpt-4o-2024-05-13":               { input: 5, output: 15, reasoning: 15, reasoning_included: true, cache_creation: 5 },
+  "gpt-4o-mini":                     { input: 0.15, output: 0.6, cached: 0.075, reasoning: 0.6, reasoning_included: true, cache_creation: 0.15 },
+  "gpt-4.1":                         { input: 2, output: 8, cached: 0.5, reasoning: 8, reasoning_included: true, cache_creation: 2 },
+  "gpt-4.1-mini":                    { input: 0.4, output: 1.6, cached: 0.1, reasoning: 1.6, reasoning_included: true, cache_creation: 0.4 },
+  "gpt-4.1-nano":                    { input: 0.1, output: 0.4, cached: 0.025, reasoning: 0.4, reasoning_included: true, cache_creation: 0.1 },
+  "gpt-5":                           { input: 1.25, output: 10, cached: 0.125, reasoning: 10, reasoning_included: true, cache_creation: 1.25 },
+  "gpt-5-mini":                      { input: 0.25, output: 2, cached: 0.025, reasoning: 2, reasoning_included: true, cache_creation: 0.25 },
+  "gpt-5-nano":                      { input: 0.05, output: 0.4, cached: 0.005, reasoning: 0.4, reasoning_included: true, cache_creation: 0.05 },
+  "gpt-5-pro":                       { input: 15, output: 120, reasoning: 120, reasoning_included: true, cache_creation: 15 },
+  "gpt-5-codex":                     { input: 1.25, output: 10, cached: 0.125, reasoning: 10, reasoning_included: true, cache_creation: 1.25 },
+  "gpt-5.1":                         { input: 1.25, output: 10, cached: 0.125, reasoning: 10, reasoning_included: true, cache_creation: 1.25 },
+  "gpt-5.1-codex":                   { input: 1.25, output: 10, cached: 0.125, reasoning: 10, reasoning_included: true, cache_creation: 1.25 },
+  "gpt-5.1-codex-mini":              { input: 0.25, output: 2, cached: 0.025, reasoning: 2, reasoning_included: true, cache_creation: 0.25 },
+  "gpt-5.1-codex-mini-high":         { input: 0.25, output: 2, cached: 0.025, reasoning: 2, reasoning_included: true, cache_creation: 0.25 },
+  "gpt-5.1-codex-max":               { input: 1.25, output: 10, cached: 0.125, reasoning: 10, reasoning_included: true, cache_creation: 1.25 },
+  "gpt-5.2":                         { input: 1.75, output: 14, cached: 0.175, reasoning: 14, reasoning_included: true, cache_creation: 1.75 },
+  "gpt-5.2-pro":                     { input: 21, output: 168, reasoning: 168, reasoning_included: true, cache_creation: 21 },
+  "gpt-5.2-codex":                   { input: 1.75, output: 14, cached: 0.175, reasoning: 14, reasoning_included: true, cache_creation: 1.75 },
+  "gpt-5.3-codex":                   { input: 1.75, output: 14, cached: 0.175, reasoning: 14, reasoning_included: true, cache_creation: 1.75 },
+  "gpt-5.3-codex-spark":             { input: 3, output: 12, cached: 0.3, reasoning: 12, reasoning_included: true, cache_creation: 3 },
+  "gpt-5.4":                         { input: 2.5, output: 15, cached: 0.25, reasoning: 15, reasoning_included: true, cache_creation: 2.5,
+    long_context: { above: 272000, input: 5, output: 22.5, cached: 0.5, reasoning: 22.5, cache_creation: 5 },
+  },
+  "gpt-5.4-mini":                    { input: 0.75, output: 4.5, cached: 0.075, reasoning: 4.5, reasoning_included: true, cache_creation: 0.75 },
+  "gpt-5.4-nano":                    { input: 0.2, output: 1.25, cached: 0.02, reasoning: 1.25, reasoning_included: true, cache_creation: 0.2 },
+  "gpt-5.4-pro":                     { input: 30, output: 180, reasoning: 180, reasoning_included: true, cache_creation: 30,
+    long_context: { above: 272000, input: 60, output: 270, reasoning: 270, cache_creation: 60 },
+  },
+  "gpt-5.5":                         { input: 5, output: 30, cached: 0.5, reasoning: 30, reasoning_included: true, cache_creation: 5,
+    long_context: { above: 272000, input: 10, output: 45, cached: 1, reasoning: 45, cache_creation: 10 },
+  },
+  "gpt-5.5-pro":                     { input: 30, output: 180, reasoning: 180, reasoning_included: true, cache_creation: 30,
+    long_context: { above: 272000, input: 60, output: 270, reasoning: 270, cache_creation: 60 },
+  },
+  "gpt-5.6":                         { input: 2.5, output: 15, cached: 0.25, reasoning: 15, reasoning_included: true, cache_creation: 2.5 },
+  "gpt-5.6-luna":                    { input: 0.2, output: 1.2, cached: 0.02, reasoning: 1.2, reasoning_included: true, cache_creation: 0.25,
+    long_context: { above: 272000, input: 0.4, output: 1.8, cached: 0.04, reasoning: 1.8, cache_creation: 0.5 },
+  },
+  "gpt-5.6-terra": { input: 2, output: 12, cached: 0.2, reasoning: 12, reasoning_included: true, cache_creation: 2.5,
+    long_context: { above: 272000, input: 4, output: 18, cached: 0.4, reasoning: 18, cache_creation: 5 },
+  },
+  "gpt-5.6-sol":                     { input: 4, output: 20, cached: 0.4, reasoning: 20, reasoning_included: true, cache_creation: 5,
+    long_context: { above: 272000, input: 8, output: 30, cached: 0.8, reasoning: 30, cache_creation: 10 },
+  },
+  "gpt-6-astra":                     { input: 10, output: 50, cached: 1, reasoning: 50, reasoning_included: true, cache_creation: 12.5,
+    long_context: { above: 272000, input: 20, output: 75, cached: 2, reasoning: 75, cache_creation: 25 },
+  },
+  "o1":                              { input: 15, output: 60, cached: 7.5, reasoning: 60, reasoning_included: true, cache_creation: 15 },
+  "o1-mini":                         { input: 1.1, output: 4.4, cached: 0.55, reasoning: 4.4, reasoning_included: true, cache_creation: 1.1 },
+  "o1-pro":                          { input: 150, output: 600, reasoning: 600, reasoning_included: true, cache_creation: 150 },
+  "o3":                              { input: 2, output: 8, cached: 0.5, reasoning: 8, reasoning_included: true, cache_creation: 2 },
+  "o3-mini":                         { input: 1.1, output: 4.4, cached: 0.55, reasoning: 4.4, reasoning_included: true, cache_creation: 1.1 },
+  "o3-pro":                          { input: 20, output: 80, reasoning: 80, reasoning_included: true, cache_creation: 20 },
+  "o4-mini":                         { input: 1.1, output: 4.4, cached: 0.275, reasoning: 4.4, reasoning_included: true, cache_creation: 1.1 },
 
   // === Gemini ===
-  "gemini-3.8-flash":              { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.8-flash-high":         { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.8-flash-medium":       { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.8-flash-low":          { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.7-flash":              { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.7-flash-high":         { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.7-flash-medium":       { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.7-flash-low":          { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.6-flash":              { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.6-flash-high":         { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.6-flash-medium":       { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.6-flash-low":          { input: 1.50,  output: 7.50,  cached: 0.15,  reasoning: 11.25,  cache_creation: 1.875 },
-  "gemini-3.5-flash-lite":         { input: 0.30,  output: 2.50,  cached: 0.03,  reasoning: 3.75,   cache_creation: 0.375 },
-  "gemini-3.5-flash-high":         { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  },
-  "gemini-3-flash-preview":        { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-09-21), text/Standard.
+  // 3.6/3.7/3.8 Flash: 50% promotional rates through 2026-12-31; storage billed separately.
+  "gemini-3.5-flash":                { input: 1.5, output: 9, cached: 0.15, reasoning: 9, cache_creation: 1.5 },
+  "gemini-3.1-pro-preview":          { input: 2, output: 12, cached: 0.2, reasoning: 12, cache_creation: 2,
+    long_context: { above: 200000, input: 4, output: 18, cached: 0.4, reasoning: 18, cache_creation: 4 },
+  },
+  "gemini-3.8-flash":                { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.8-flash-high":           { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.8-flash-medium":         { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.8-flash-low":            { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.7-flash":                { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.7-flash-high":           { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.7-flash-medium":         { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.7-flash-low":            { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.6-flash":                { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.6-flash-high":           { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.6-flash-medium":         { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.6-flash-low":            { input: 0.75, output: 3.75, cached: 0.075, reasoning: 3.75, cache_creation: 0.75 },
+  "gemini-3.5-flash-lite":           { input: 0.3, output: 2.5, cached: 0.03, reasoning: 2.5, cache_creation: 0.3 },
+  "gemini-3.5-flash-high":           { input: 1.5, output: 9, cached: 0.15, reasoning: 9, cache_creation: 1.5 },
+  "gemini-3-flash-preview":          { input: 0.5, output: 3, cached: 0.05, reasoning: 3, cache_creation: 0.5 },
   "gemini-3-pro-preview":         { input: 2.00,  output: 12.00, cached: 0.25,  reasoning: 18.00,  cache_creation: 2.00  },
-  "gemini-3.1-pro-low":           { input: 2.00,  output: 12.00, cached: 0.25,  reasoning: 18.00,  cache_creation: 2.00  },
-  "gemini-3.1-pro-high":          { input: 4.00,  output: 18.00, cached: 0.50,  reasoning: 27.00,  cache_creation: 4.00  },
+  "gemini-3.1-pro-low":              { input: 2, output: 12, cached: 0.2, reasoning: 12, cache_creation: 2,
+    long_context: { above: 200000, input: 4, output: 18, cached: 0.4, reasoning: 18, cache_creation: 4 },
+  },
+  "gemini-3.1-pro-high":             { input: 2, output: 12, cached: 0.2, reasoning: 12, cache_creation: 2,
+    long_context: { above: 200000, input: 4, output: 18, cached: 0.4, reasoning: 18, cache_creation: 4 },
+  },
   "gemini-pro-agent":             { input: 4.00,  output: 18.00, cached: 0.50,  reasoning: 27.00,  cache_creation: 4.00  },
-  "gemini-3-flash-agent":         { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  },
-  "gemini-3.5-flash-low":         { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  },
-  "gemini-3.5-flash-extra-low":   { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  },
-  "gemini-3-flash":               { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  },
-  "gemini-2.5-pro":               { input: 2.00,  output: 12.00, cached: 0.25,  reasoning: 18.00,  cache_creation: 2.00  },
-  "gemini-2.5-flash":             { input: 0.30,  output: 2.50,  cached: 0.03,  reasoning: 3.75,   cache_creation: 0.30  },
-  "gemini-2.5-flash-lite":        { input: 0.15,  output: 1.25,  cached: 0.015, reasoning: 1.875,  cache_creation: 0.15  },
+  "gemini-3-flash-agent":            { input: 0.5, output: 3, cached: 0.05, reasoning: 3, cache_creation: 0.5 },
+  "gemini-3.5-flash-low":            { input: 1.5, output: 9, cached: 0.15, reasoning: 9, cache_creation: 1.5 },
+  "gemini-3.5-flash-extra-low":      { input: 1.5, output: 9, cached: 0.15, reasoning: 9, cache_creation: 1.5 },
+  "gemini-3-flash":                  { input: 0.5, output: 3, cached: 0.05, reasoning: 3, cache_creation: 0.5 },
+  "gemini-2.5-pro":                  { input: 1.25, output: 10, cached: 0.125, reasoning: 10, cache_creation: 1.25,
+    long_context: { above: 200000, input: 2.5, output: 15, cached: 0.25, reasoning: 15, cache_creation: 2.5 },
+  },
+  "gemini-2.5-flash":                { input: 0.3, output: 2.5, cached: 0.03, reasoning: 2.5, cache_creation: 0.3 },
+  "gemini-2.5-flash-lite":           { input: 0.1, output: 0.4, cached: 0.01, reasoning: 0.4, cache_creation: 0.1 },
 
   // === Qwen ===
   "qwen3-coder-plus":             { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  },
   "qwen3-coder-flash":            { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
 
   // === Kimi ===
-  // Official platform.kimi.ai: cache-hit / cache-miss / output per 1M tokens
+  // https://platform.kimi.ai/docs/pricing/chat (2026-09-21): K3, K2.7 Code, K2.6.
+  // Earlier Kimi versions below remain unverified estimates.
   "kimi-k3":                      { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.00  },
   "k3":                           { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.00  },
   "kimi-k2.7-code":               { input: 0.95,  output: 4.00,  cached: 0.19,  reasoning: 4.00,   cache_creation: 0.95  },
@@ -101,34 +159,56 @@ export const MODEL_PRICING = {
   "kimi-k2-thinking":             { input: 1.50,  output: 6.00,  cached: 0.75,  reasoning: 9.00,   cache_creation: 1.50  },
   "kimi-k2.5":                    { input: 1.20,  output: 4.80,  cached: 0.60,  reasoning: 7.20,   cache_creation: 1.20  },
   "kimi-k2.5-thinking":           { input: 1.80,  output: 7.20,  cached: 0.90,  reasoning: 10.80,  cache_creation: 1.80  },
-  "kimi-k2.6":                    { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  },
+  "kimi-k2.6":                       { input: 0.95, output: 4, cached: 0.16, reasoning: 4, cache_creation: 0.95 },
   "kimi-latest":                  { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  },
 
   // === DeepSeek ===
+  // V4 rates: https://api-docs.deepseek.com/quick_start/pricing (2026-09-21).
+  // ponytail: peak-rate estimate; add billing-time/holiday metadata before applying off-peak discounts.
+  "deepseek-flash":                  { input: 0.3, output: 1.2, cached: 0.006, reasoning: 1.2, cache_creation: 0.3 },
   "deepseek-chat":                { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  },
   "deepseek-reasoner":            { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  },
   "deepseek-r1":                  { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  },
   "deepseek-v3.2-chat":           { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  },
   "deepseek-v3.2-reasoner":       { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  },
-  "deepseek-v4-flash":            { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  },
-  "deepseek-v4-pro":              { input: 0.435, output: 0.87,  cached: 0.003625, reasoning: 0.87,  cache_creation: 0.435 },
+  "deepseek-v4-flash":               { input: 0.3, output: 1.2, cached: 0.006, reasoning: 1.2, cache_creation: 0.3 },
+  "deepseek-v4-pro":                 { input: 1.32, output: 3.96, cached: 0.044, reasoning: 3.96, cache_creation: 1.32 },
 
   // === GLM ===
-  "glm-4.6":                      { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
-  "glm-4.6v":                     { input: 0.75,  output: 3.00,  cached: 0.375, reasoning: 4.50,   cache_creation: 0.75  },
-  "glm-4.7":                      { input: 0.75,  output: 3.00,  cached: 0.375, reasoning: 4.50,   cache_creation: 0.75  },
-  "glm-5":                        { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  },
+  // https://docs.z.ai/guides/overview/pricing (2026-09-21).
+  "glm-5.1": { input: 1.4, output: 4.4, cached: 0.26, reasoning: 4.4, cache_creation: 1.4 },
+  "glm-5.2": { input: 1.4, output: 4.4, cached: 0.26, reasoning: 4.4, cache_creation: 1.4 },
+  "glm-5.3": { input: 1.4, output: 4.4, cached: 0.26, reasoning: 4.4, cache_creation: 1.4 },
+  "glm-5.3-flash": { input: 0.15, output: 0.5, cached: 0.03, reasoning: 0.5, cache_creation: 0.15 },
+  "glm-5.3-flashx": { input: 0.37, output: 1.25, cached: 0.075, reasoning: 1.25, cache_creation: 0.37 },
+  "glm-4.7-flash": { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+  "glm-4.6":                         { input: 0.6, output: 2.2, cached: 0.11, reasoning: 2.2, cache_creation: 0.6 },
+  "glm-4.6v":                        { input: 0.3, output: 0.9, cached: 0.05, reasoning: 0.9, cache_creation: 0.3 },
+  "glm-4.7":                         { input: 0.6, output: 2.2, cached: 0.11, reasoning: 2.2, cache_creation: 0.6 },
+  "glm-5":                           { input: 1, output: 3.2, cached: 0.2, reasoning: 3.2, cache_creation: 1 },
 
   // === MiniMax ===
-  "MiniMax-M3":                   { input: 0.30,  output: 1.20,  cached: 0.06,  reasoning: 1.80,   cache_creation: 0.30  },
-  "MiniMax-M2.1":                 { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
-  "MiniMax-M2.5":                 { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
-  "MiniMax-M2.7":                 { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
-  "minimax-m2.1":                 { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
-  "minimax-m2.5":                 { input: 0.60,  output: 2.40,  cached: 0.30,  reasoning: 3.60,   cache_creation: 0.60  },
+  "MiniMax-M2.1-highspeed": { input: 0.6, output: 2.4, cached: 0.03, reasoning: 2.4, cache_creation: 0.375 },
+  "MiniMax-M2.5-highspeed": { input: 0.6, output: 2.4, cached: 0.03, reasoning: 2.4, cache_creation: 0.375 },
+  "MiniMax-M2.7-highspeed": { input: 0.6, output: 2.4, cached: 0.06, reasoning: 2.4, cache_creation: 0.375 },
+  // https://platform.minimax.io/docs/guides/pricing-paygo (2026-09-21).
+  "MiniMax-M3":                      { input: 0.3, output: 1.2, cached: 0.06, reasoning: 1.2, cache_creation: 0.3,
+    long_context: { above: 512000, input: 0.6, output: 2.4, cached: 0.12, reasoning: 2.4, cache_creation: 0.6 },
+  },
+  "MiniMax-M2.1":                    { input: 0.3, output: 1.2, cached: 0.03, reasoning: 1.2, cache_creation: 0.375 },
+  "MiniMax-M2.5":                    { input: 0.3, output: 1.2, cached: 0.03, reasoning: 1.2, cache_creation: 0.375 },
+  "MiniMax-M2.7":                    { input: 0.3, output: 1.2, cached: 0.06, reasoning: 1.2, cache_creation: 0.375 },
+  "minimax-m2.1":                    { input: 0.3, output: 1.2, cached: 0.03, reasoning: 1.2, cache_creation: 0.375 },
+  "minimax-m2.5":                    { input: 0.3, output: 1.2, cached: 0.03, reasoning: 1.2, cache_creation: 0.375 },
 
   // === Grok ===
-  "grok-code-fast-1":             { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  },
+  // grok-code-fast-1 now aliases grok-build-0.1: https://docs.x.ai/developers/models/grok-build-0.1
+  "grok-build-0.1":                  { input: 1, output: 2, cached: 0.2, reasoning: 2, cache_creation: 1,
+    long_context: { above: 199999, input: 2, output: 4, cached: 0.4, reasoning: 4, cache_creation: 2 },
+  },
+  "grok-code-fast-1":                { input: 1, output: 2, cached: 0.2, reasoning: 2, cache_creation: 1,
+    long_context: { above: 199999, input: 2, output: 4, cached: 0.4, reasoning: 4, cache_creation: 2 },
+  },
 
   // === OpenRouter fallback ===
   "auto":                         { input: 2.00,  output: 8.00,  cached: 1.00,  reasoning: 12.00,  cache_creation: 2.00  },
@@ -275,25 +355,31 @@ export const PROVIDER_PRICING = {
  * First match wins — order matters.
  */
 export const PATTERN_PRICING = [
-  // --- Codex variants ---
-  { pattern: "*-codex-xhigh",   pricing: { input: 10.00, output: 40.00, cached: 5.00,  reasoning: 60.00,  cache_creation: 10.00 } },
-  { pattern: "*-codex-high",    pricing: { input: 8.00,  output: 32.00, cached: 4.00,  reasoning: 48.00,  cache_creation: 8.00  } },
-  { pattern: "*-codex-max",     pricing: { input: 8.00,  output: 32.00, cached: 4.00,  reasoning: 48.00,  cache_creation: 8.00  } },
-  { pattern: "*-codex-mini-*",  pricing: { input: 1.50,  output: 6.00,  cached: 0.75,  reasoning: 9.00,   cache_creation: 1.50  } },
-  { pattern: "*-codex-mini",    pricing: { input: 1.50,  output: 6.00,  cached: 0.75,  reasoning: 9.00,   cache_creation: 1.50  } },
-  { pattern: "*-codex-low",     pricing: { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  } },
-  { pattern: "*-codex-none",    pricing: { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  } },
-  { pattern: "*-codex-spark",   pricing: { input: 3.00,  output: 12.00, cached: 0.30,  reasoning: 12.00,  cache_creation: 3.00  } },
-  { pattern: "codex-*",         pricing: { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  } },
-  { pattern: "*-codex",         pricing: { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  } },
+  // --- Unversioned Codex estimate; versioned reasoning aliases resolve canonically. ---
+  { pattern: "codex-*", pricing: MODEL_PRICING["gpt-5.3-codex"] },
 
   // --- Claude ---
+  { pattern: "claude-opus-4-2025*", pricing: MODEL_PRICING["claude-opus-4"] },
+  { pattern: "claude-opus-4.1*", pricing: MODEL_PRICING["claude-opus-4.1"] },
+  { pattern: "claude-fable-5-1*", pricing: { input: 10.00, output: 50.00, cached: 0.25, reasoning: 50.00, cache_creation: 12.50, cache_creation_1h: 20.00 } },
+  { pattern: "claude-fable-5.1*", pricing: { input: 10.00, output: 50.00, cached: 0.25, reasoning: 50.00, cache_creation: 12.50, cache_creation_1h: 20.00 } },
+  { pattern: "claude-fable-*",  pricing: { input: 10.00, output: 50.00, cached: 1.00, reasoning: 50.00, cache_creation: 12.50, cache_creation_1h: 20.00 } },
+  { pattern: "claude-sonnet-5*", pricing: { input: 2.00, output: 10.00, cached: 0.20, reasoning: 10.00, cache_creation: 2.50, cache_creation_1h: 4.00 } },
+  { pattern: "claude-opus-4-1*", pricing: { input: 15.00, output: 75.00, cached: 1.50, reasoning: 75.00, cache_creation: 18.75 } },
   { pattern: "claude-opus-*",   pricing: { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  } },
   { pattern: "claude-sonnet-*", pricing: { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  } },
   { pattern: "claude-haiku-*",  pricing: { input: 1.00,  output: 5.00,  cached: 0.10,  reasoning: 5.00,   cache_creation: 1.25  } },
   { pattern: "claude-*",        pricing: { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  } },
 
   // --- Gemini (specific first, generic last) ---
+  { pattern: "gemini-3.8-flash-*", pricing: MODEL_PRICING["gemini-3.8-flash"] },
+  { pattern: "gemini-3.7-flash-*", pricing: MODEL_PRICING["gemini-3.7-flash"] },
+  { pattern: "gemini-3.6-flash-*", pricing: MODEL_PRICING["gemini-3.6-flash"] },
+  { pattern: "gemini-3.5-flash-lite-*", pricing: MODEL_PRICING["gemini-3.5-flash-lite"] },
+  { pattern: "gemini-3.5-flash-*", pricing: MODEL_PRICING["gemini-3.5-flash"] },
+  { pattern: "gemini-3.1-pro-*", pricing: MODEL_PRICING["gemini-3.1-pro-preview"] },
+  { pattern: "gemini-2.5-pro-*", pricing: MODEL_PRICING["gemini-2.5-pro"] },
+  { pattern: "gemini-2.5-flash-lite-*", pricing: MODEL_PRICING["gemini-2.5-flash-lite"] },
   { pattern: "gemini-*-flash-lite", pricing: { input: 0.15, output: 1.25, cached: 0.015, reasoning: 1.875, cache_creation: 0.15 } },
   { pattern: "gemini-*-flash",  pricing: { input: 0.30,  output: 2.50,  cached: 0.03,  reasoning: 3.75,   cache_creation: 0.30  } },
   { pattern: "gemini-*-pro",    pricing: { input: 2.00,  output: 12.00, cached: 0.25,  reasoning: 18.00,  cache_creation: 2.00  } },
@@ -301,22 +387,26 @@ export const PATTERN_PRICING = [
   { pattern: "gemini-2.5-*",    pricing: { input: 0.30,  output: 2.50,  cached: 0.03,  reasoning: 3.75,   cache_creation: 0.30  } },
   { pattern: "gemini-*",        pricing: { input: 0.50,  output: 3.00,  cached: 0.03,  reasoning: 4.50,   cache_creation: 0.50  } },
 
-  // --- GPT (specific first, generic last) ---
-  { pattern: "gpt-5.6-*",       pricing: { input: 2.50,  output: 15.00, cached: 0.25,  reasoning: 15.00,  cache_creation: 2.50  } },
-  { pattern: "gpt-5.3-*",       pricing: { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  } },
-  { pattern: "gpt-5.2-*",       pricing: { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  } },
-  { pattern: "gpt-5.1-*",       pricing: { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  } },
-  { pattern: "gpt-5-*",         pricing: { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  } },
-  { pattern: "gpt-5*",          pricing: { input: 1.25,  output: 10.00, cached: 0.625, reasoning: 10.00,  cache_creation: 1.25  } },
-  { pattern: "gpt-4o-*",        pricing: { input: 0.15,  output: 0.60,  cached: 0.075, reasoning: 0.90,   cache_creation: 0.15  } },
-  { pattern: "gpt-4o",          pricing: { input: 2.50,  output: 10.00, cached: 1.25,  reasoning: 15.00,  cache_creation: 2.50  } },
-  { pattern: "gpt-4*",          pricing: { input: 2.50,  output: 10.00, cached: 1.25,  reasoning: 15.00,  cache_creation: 2.50  } },
-
-  // --- o1 / o-series ---
-  { pattern: "o1-*",            pricing: { input: 3.00,  output: 12.00, cached: 1.50,  reasoning: 18.00,  cache_creation: 3.00  } },
-  { pattern: "o1",              pricing: { input: 15.00, output: 60.00, cached: 7.50,  reasoning: 90.00,  cache_creation: 15.00 } },
-  { pattern: "o3-*",            pricing: { input: 10.00, output: 40.00, cached: 5.00,  reasoning: 60.00,  cache_creation: 10.00 } },
-  { pattern: "o4-*",            pricing: { input: 2.00,  output: 8.00,  cached: 1.00,  reasoning: 12.00,  cache_creation: 2.00  } },
+  // --- Unrecognized GPT/o-series suffixes retain family estimates. ---
+  { pattern: "gpt-6-astra-*", pricing: MODEL_PRICING["gpt-6-astra"] },
+  { pattern: "gpt-5.6-sol-*", pricing: MODEL_PRICING["gpt-5.6-sol"] },
+  { pattern: "gpt-5.6-terra-*", pricing: MODEL_PRICING["gpt-5.6-terra"] },
+  { pattern: "gpt-5.6-luna-*", pricing: MODEL_PRICING["gpt-5.6-luna"] },
+  { pattern: "gpt-5.6-*", pricing: MODEL_PRICING["gpt-5.6"] },
+  { pattern: "gpt-5.5-*", pricing: MODEL_PRICING["gpt-5.5"] },
+  { pattern: "gpt-5.4-*", pricing: MODEL_PRICING["gpt-5.4"] },
+  { pattern: "gpt-5.3-*", pricing: MODEL_PRICING["gpt-5.3-codex"] },
+  { pattern: "gpt-5.2-*", pricing: MODEL_PRICING["gpt-5.2"] },
+  { pattern: "gpt-5.1-*", pricing: MODEL_PRICING["gpt-5.1"] },
+  { pattern: "gpt-5*", pricing: MODEL_PRICING["gpt-5"] },
+  { pattern: "gpt-4o-mini-*", pricing: MODEL_PRICING["gpt-4o-mini"] },
+  { pattern: "gpt-4o-*", pricing: MODEL_PRICING["gpt-4o"] },
+  { pattern: "gpt-4.1-*", pricing: MODEL_PRICING["gpt-4.1"] },
+  { pattern: "gpt-4-turbo-*", pricing: MODEL_PRICING["gpt-4-turbo"] },
+  { pattern: "gpt-4*", pricing: MODEL_PRICING["gpt-4"] },
+  { pattern: "o1-*", pricing: MODEL_PRICING["o1"] },
+  { pattern: "o3-*", pricing: MODEL_PRICING["o3"] },
+  { pattern: "o4-mini-*", pricing: MODEL_PRICING["o4-mini"] },
 
   // --- Qwen ---
   { pattern: "qwen3-coder-*",   pricing: { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  } },
@@ -330,13 +420,18 @@ export const PATTERN_PRICING = [
   { pattern: "kimi-*",          pricing: { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  } },
 
   // --- DeepSeek ---
+  { pattern: "deepseek-v4-pro-*", pricing: MODEL_PRICING["deepseek-v4-pro"] },
+  { pattern: "deepseek-v4-flash-*", pricing: MODEL_PRICING["deepseek-v4-flash"] },
   { pattern: "deepseek-*reasoner*", pricing: { input: 0.14, output: 0.28, cached: 0.0028, reasoning: 0.28, cache_creation: 0.14 } },
   { pattern: "deepseek-r*",     pricing: { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  } },
   { pattern: "deepseek-v*",     pricing: { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  } },
   { pattern: "deepseek-*",      pricing: { input: 0.14,  output: 0.28,  cached: 0.0028, reasoning: 0.28,   cache_creation: 0.14  } },
 
   // --- GLM ---
-  { pattern: "glm-5*",          pricing: { input: 1.00,  output: 4.00,  cached: 0.50,  reasoning: 6.00,   cache_creation: 1.00  } },
+  { pattern: "glm-4.6v-*", pricing: MODEL_PRICING["glm-4.6v"] },
+  { pattern: "glm-4.6-*", pricing: MODEL_PRICING["glm-4.6"] },
+  { pattern: "glm-4.7-*", pricing: MODEL_PRICING["glm-4.7"] },
+  { pattern: "glm-5*", pricing: MODEL_PRICING["glm-5"] },
   { pattern: "glm-4*",          pricing: { input: 0.75,  output: 3.00,  cached: 0.375, reasoning: 4.50,   cache_creation: 0.75  } },
   { pattern: "glm-*",           pricing: { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  } },
 
@@ -345,7 +440,7 @@ export const PATTERN_PRICING = [
   { pattern: "minimax-*",       pricing: { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  } },
 
   // --- Grok ---
-  { pattern: "grok-code-*",     pricing: { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  } },
+  { pattern: "grok-code-*", pricing: MODEL_PRICING["grok-code-fast-1"] },
   { pattern: "grok-*",          pricing: { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  } },
 ];
 
@@ -357,6 +452,10 @@ export function matchPattern(pattern, model) {
   const regex = new RegExp("^" + pattern.split("*").map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$", "i");
   return regex.test(model);
 }
+
+const CANONICAL_PRICING_BY_ID = Object.fromEntries(
+  Object.entries(MODEL_PRICING).map(([model, pricing]) => [model.toLowerCase(), pricing])
+);
 
 /**
  * Resolve pricing for a model using the 3-step fallback chain:
@@ -378,8 +477,14 @@ export function getPricingForModel(provider, model) {
 
   // 2. Canonical model pricing (strip vendor prefix if needed: "deepseek/deepseek-chat" → "deepseek-chat")
   const baseModel = model.includes("/") ? model.split("/").pop() : model;
-  if (MODEL_PRICING[baseModel]) return MODEL_PRICING[baseModel];
-  if (MODEL_PRICING[model]) return MODEL_PRICING[model];
+  const id = baseModel.toLowerCase();
+  if (CANONICAL_PRICING_BY_ID[id]) return CANONICAL_PRICING_BY_ID[id];
+
+  // Effort changes token counts, not the per-token rate. Preserve exact snapshot exceptions above.
+  const effortAlias = id.replace(/-(none|minimal|low|medium|high|xhigh|thinking)$/, "");
+  if (CANONICAL_PRICING_BY_ID[effortAlias]) return CANONICAL_PRICING_BY_ID[effortAlias];
+  const alias = effortAlias.replace(/-([0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2})$/, "");
+  if (CANONICAL_PRICING_BY_ID[alias]) return CANONICAL_PRICING_BY_ID[alias];
 
   // 3. Pattern match
   for (const { pattern, pricing } of PATTERN_PRICING) {
@@ -421,6 +526,9 @@ export function calculateCostFromTokens(tokens, pricing) {
   let cost = 0;
 
   const inputTokens = tokens.prompt_tokens || tokens.input_tokens || 0;
+  if (pricing.long_context && inputTokens > pricing.long_context.above) {
+    pricing = { ...pricing, ...pricing.long_context };
+  }
   const cachedTokens = tokens.cached_tokens || tokens.cache_read_input_tokens || 0;
   const cacheCreationTokens = tokens.cache_creation_input_tokens || 0;
   // prompt_tokens is cache-inclusive (see canonicalizeUsage): cached + cache_creation
@@ -430,19 +538,21 @@ export function calculateCostFromTokens(tokens, pricing) {
   cost += nonCachedInput * (pricing.input / 1000000);
 
   if (cachedTokens > 0) {
-    cost += cachedTokens * ((pricing.cached || pricing.input) / 1000000);
+    cost += cachedTokens * ((pricing.cached ?? pricing.input) / 1000000);
   }
 
   const outputTokens = tokens.completion_tokens || tokens.output_tokens || 0;
   cost += outputTokens * (pricing.output / 1000000);
 
   const reasoningTokens = tokens.reasoning_tokens || 0;
-  if (reasoningTokens > 0) {
-    cost += reasoningTokens * ((pricing.reasoning || pricing.output) / 1000000);
+  if (reasoningTokens > 0 && !pricing.reasoning_included) {
+    cost += reasoningTokens * ((pricing.reasoning ?? pricing.output) / 1000000);
   }
 
   if (cacheCreationTokens > 0) {
-    cost += cacheCreationTokens * ((pricing.cache_creation || pricing.input) / 1000000);
+    const oneHourTokens = Math.min(cacheCreationTokens, Math.max(0, tokens.cache_creation?.ephemeral_1h_input_tokens || 0));
+    cost += (cacheCreationTokens - oneHourTokens) * ((pricing.cache_creation ?? pricing.input) / 1000000);
+    cost += oneHourTokens * ((pricing.cache_creation_1h ?? pricing.input * 2) / 1000000);
   }
 
   return cost;

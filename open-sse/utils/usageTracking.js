@@ -75,6 +75,7 @@ export function filterUsageForFormat(usage, targetFormat) {
     [FORMATS.CLAUDE]: [
       'input_tokens', 'output_tokens', 
       'cache_read_input_tokens', 'cache_creation_input_tokens',
+      'cache_creation',
       'estimated'
     ],
     [FORMATS.GEMINI]: [
@@ -131,6 +132,15 @@ export function normalizeUsage(usage) {
   assignNumber("cache_creation_input_tokens", usage?.cache_creation_input_tokens);
   assignNumber("cached_tokens", usage?.cached_tokens);
   assignNumber("reasoning_tokens", usage?.reasoning_tokens);
+  if (usage.cache_creation && typeof usage.cache_creation === "object") {
+    normalized.cache_creation = {};
+    for (const key of ["ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens"]) {
+      const value = usage.cache_creation[key];
+      if (value != null && Number.isFinite(Number(value)) && Number(value) >= 0) {
+        normalized.cache_creation[key] = Number(value);
+      }
+    }
+  }
 
   // Preserve nested details objects for OpenAI format forwarding
   if (usage?.prompt_tokens_details && typeof usage.prompt_tokens_details === "object") {
@@ -206,6 +216,8 @@ export function canonicalizeUsage(usage) {
     cache_creation_input_tokens: cacheCreation,
   };
   if (reasoning > 0) result.reasoning_tokens = reasoning;
+  const cacheCreationDetails = usage.cache_creation ?? usage.prompt_tokens_details?.cache_creation;
+  if (cacheCreationDetails && typeof cacheCreationDetails === "object") result.cache_creation = cacheCreationDetails;
   return result;
 }
 
@@ -248,7 +260,8 @@ export function extractUsage(chunk) {
       prompt_tokens: u.input_tokens || 0,
       completion_tokens: u.output_tokens || 0,
       cache_read_input_tokens: u.cache_read_input_tokens,
-      cache_creation_input_tokens: u.cache_creation_input_tokens
+      cache_creation_input_tokens: u.cache_creation_input_tokens,
+      cache_creation: u.cache_creation,
     });
   }
 
@@ -258,7 +271,8 @@ export function extractUsage(chunk) {
       prompt_tokens: chunk.usage.input_tokens || 0,
       completion_tokens: chunk.usage.output_tokens || 0,
       cache_read_input_tokens: chunk.usage.cache_read_input_tokens,
-      cache_creation_input_tokens: chunk.usage.cache_creation_input_tokens
+      cache_creation_input_tokens: chunk.usage.cache_creation_input_tokens,
+      cache_creation: chunk.usage.cache_creation,
     });
   }
 
@@ -328,7 +342,7 @@ export function mergeUsage(prev, next) {
     if (typeof v === "number" && Number.isFinite(v)) {
       merged[k] = Math.max(typeof merged[k] === "number" ? merged[k] : 0, v);
     } else if (v && typeof v === "object") {
-      merged[k] = v; // nested details objects: take latest
+      merged[k] = k === "cache_creation" ? mergeUsage(merged[k], v) : v;
     }
   }
   return merged;

@@ -95,7 +95,9 @@ export async function handleEmbeddings(request) {
   let lastStatus = null;
 
   while (true) {
-    const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
+    const credentials = await getProviderCredentials(provider, excludeConnectionIds, model, { apiKey });
+
+    if (credentials?.accessDenied) return errorResponse(credentials.status || HTTP_STATUS.FORBIDDEN, credentials.error);
 
     // All accounts unavailable
     if (!credentials || credentials.allRateLimited) {

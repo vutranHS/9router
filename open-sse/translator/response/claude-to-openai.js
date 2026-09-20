@@ -38,6 +38,7 @@ export function claudeToOpenAIResponse(chunk, state) {
         const promptTokens = inputTokens + cacheReadTokens + cacheCreationTokens;
         state.usage = {
           prompt_tokens: promptTokens,
+          cached_tokens: cacheReadTokens,
           completion_tokens: 0,
           total_tokens: promptTokens,
           input_tokens: inputTokens,
@@ -45,6 +46,7 @@ export function claudeToOpenAIResponse(chunk, state) {
         };
         if (cacheReadTokens > 0) state.usage.cache_read_input_tokens = cacheReadTokens;
         if (cacheCreationTokens > 0) state.usage.cache_creation_input_tokens = cacheCreationTokens;
+        if (startUsage.cache_creation) state.usage.cache_creation = startUsage.cache_creation;
       }
       results.push(createChunk(state, { role: ROLE.ASSISTANT }));
       break;
@@ -137,6 +139,7 @@ export function claudeToOpenAIResponse(chunk, state) {
 
         state.usage = {
           prompt_tokens: promptTokens,
+          cached_tokens: cacheReadTokens,
           completion_tokens: outputTokens,
           total_tokens: promptTokens + outputTokens,
           input_tokens: inputTokens,
@@ -145,6 +148,9 @@ export function claudeToOpenAIResponse(chunk, state) {
 
         if (cacheReadTokens > 0) state.usage.cache_read_input_tokens = cacheReadTokens;
         if (cacheCreationTokens > 0) state.usage.cache_creation_input_tokens = cacheCreationTokens;
+        if (chunk.usage.cache_creation || prev.cache_creation) {
+          state.usage.cache_creation = { ...prev.cache_creation, ...chunk.usage.cache_creation };
+        }
       }
 
       if (chunk.delta?.stop_reason) {
@@ -158,7 +164,8 @@ export function claudeToOpenAIResponse(chunk, state) {
             input_tokens: state.usage.input_tokens || 0,
             output_tokens: state.usage.output_tokens || 0,
             cache_read_input_tokens: state.usage.cache_read_input_tokens,
-            cache_creation_input_tokens: state.usage.cache_creation_input_tokens
+            cache_creation_input_tokens: state.usage.cache_creation_input_tokens,
+            cache_creation: state.usage.cache_creation,
           }, "claude");
         }
 
@@ -172,11 +179,7 @@ export function claudeToOpenAIResponse(chunk, state) {
       if (!state.finishReasonSent) {
         const finishReason = state.finishReason || (state.toolCalls?.size > 0 ? OPENAI_FINISH.TOOL_CALLS : OPENAI_FINISH.STOP);
         const usageObj = (state.usage && typeof state.usage === 'object') ? {
-          usage: {
-            prompt_tokens: state.usage.input_tokens || 0,
-            completion_tokens: state.usage.output_tokens || 0,
-            total_tokens: (state.usage.input_tokens || 0) + (state.usage.output_tokens || 0)
-          }
+          usage: toOpenAIUsage(state.usage, "claude")
         } : {};
         results.push({ ...createChunk(state, {}, finishReason), ...usageObj });
         state.finishReasonSent = true;
@@ -192,4 +195,3 @@ const convertStopReason = (reason) => toOpenAIFinish(reason, "claude");
 
 // Register
 register(FORMATS.CLAUDE, FORMATS.OPENAI, null, claudeToOpenAIResponse);
-

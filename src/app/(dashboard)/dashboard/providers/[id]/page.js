@@ -843,19 +843,17 @@ export default function ProviderDetailPage() {
   };
 
   const handleUpdateConnection = async (formData) => {
-    try {
-      const res = await fetch(`/api/providers/${selectedConnection.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) {
-        await fetchConnections();
-        setShowEditModal(false);
-      }
-    } catch (error) {
-      console.log("Error updating connection:", error);
+    const res = await fetch(`/api/providers/${selectedConnection.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Could not save this connection. Try again.");
     }
+    await fetchConnections();
+    setShowEditModal(false);
   };
 
   const handleUpdateConnectionStatus = async (id, isActive) => {

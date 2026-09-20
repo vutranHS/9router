@@ -390,10 +390,13 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
   };
 
   const handleUpdateConnection = async (formData) => {
-    try {
-      const res = await fetch(`/api/providers/${selectedConnection.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
-      if (res.ok) { await fetch_(); setShowEditModal(false); }
-    } catch (e) { console.log("update connection error:", e); }
+    const res = await fetch(`/api/providers/${selectedConnection.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Could not save this connection. Try again.");
+    }
+    await fetch_();
+    setShowEditModal(false);
   };
 
   if (loading) return <Card><div className="h-20 animate-pulse bg-black/5 rounded-lg" /></Card>;

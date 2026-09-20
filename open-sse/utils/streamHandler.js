@@ -74,13 +74,13 @@ export function createStreamController({ onDisconnect, onError, log, provider, m
         abortTimeout = null;
       }
 
+      onError?.(error);
       if (error.name === "AbortError") {
         logStream("⚡", "ABORTED");
         return;
       }
 
       logStream("✗", `ERROR: ${error.message}${error.stack ? `\n    ${error.stack}` : ""}`, true);
-      onError?.(error);
     },
 
     abort: () => abortController.abort()
@@ -252,4 +252,3 @@ export function pipeWithDisconnect(providerResponse, transformStream, streamCont
     onAbortTerminal
   );
 }
-

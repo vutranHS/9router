@@ -37,7 +37,7 @@ function json(data, options = {}) {
  * GET /v1/models/{provider}/{model} - OpenAI-compatible single model lookup.
  * Supported kinds: image, tts, stt, embedding, image-to-text, web.
  */
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   try {
     const { model } = await params;
     const path = Array.isArray(model) ? model : [model];
@@ -45,13 +45,17 @@ export async function GET(_request, { params }) {
     const kindFilter = path.length === 1 ? KIND_SLUG_MAP[identifier] : null;
 
     if (kindFilter) {
-      const data = await buildModelsList(kindFilter);
+      const auth = request.headers.get("authorization");
+      const apiKey = auth?.startsWith("Bearer ") ? auth.slice(7) : request.headers.get("x-api-key");
+      const data = await buildModelsList(kindFilter, { apiKey });
       return json({ object: "list", data });
     }
 
     // Match the same LLM catalog exposed by GET /v1/models. A catch-all
     // parameter is required because provider-prefixed IDs contain a slash.
-    const models = await buildModelsList([LLM_KIND]);
+    const auth = request.headers.get("authorization");
+    const apiKey = auth?.startsWith("Bearer ") ? auth.slice(7) : request.headers.get("x-api-key");
+    const models = await buildModelsList([LLM_KIND], { apiKey });
     const matchedModel = models.find((candidate) => candidate.id === identifier);
 
     if (!matchedModel) {
