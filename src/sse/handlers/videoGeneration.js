@@ -109,7 +109,6 @@ function withConnectionHeader(response, connectionId) {
 export async function handleVideoCreate(request, action) {
   const authError = await requireValidApiKey(request);
   if (authError) return authError;
-  const apiKey = extractApiKey(request);
 
   const bodyInfo = await readForwardableBody(request);
   if (bodyInfo.error) return bodyInfo.error;
@@ -133,9 +132,7 @@ export async function handleVideoCreate(request, action) {
   let lastStatus = null;
 
   while (true) {
-    const credentials = await getProviderCredentials(provider, excludeConnectionIds, model, { preferredConnectionId, apiKey });
-
-    if (credentials?.accessDenied) return errorResponse(credentials.status || HTTP_STATUS.FORBIDDEN, credentials.error);
+    const credentials = await getProviderCredentials(provider, excludeConnectionIds, model, { preferredConnectionId });
 
     if (!credentials || credentials.allRateLimited) {
       if (credentials?.allRateLimited) {
@@ -200,15 +197,13 @@ export async function handleVideoCreate(request, action) {
 export async function handleVideoGet(request, requestId) {
   const authError = await requireValidApiKey(request);
   if (authError) return authError;
-  const apiKey = extractApiKey(request);
 
   if (!requestId) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing video request id");
 
   const preferredConnectionId = request.headers.get("x-connection-id") || null;
   const provider = await resolveGetProvider(request, preferredConnectionId);
 
-  const credentials = await getProviderCredentials(provider, null, null, { preferredConnectionId, apiKey });
-  if (credentials?.accessDenied) return errorResponse(credentials.status || HTTP_STATUS.FORBIDDEN, credentials.error);
+  const credentials = await getProviderCredentials(provider, null, null, { preferredConnectionId });
   if (!credentials || credentials.allRateLimited) {
     return errorResponse(HTTP_STATUS.BAD_REQUEST, `No credentials for provider: ${provider}`);
   }

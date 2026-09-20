@@ -4,7 +4,6 @@ import {
   getProxyPoolById,
   updateProviderConnection,
   deleteProviderConnection,
-  getApiKeys,
 } from "@/models";
 
 function normalizeProxyConfig(body = {}) {
@@ -118,23 +117,6 @@ export async function PUT(request, { params }) {
     }
 
     const updateData = {};
-    if (Object.prototype.hasOwnProperty.call(body, "quotaSharing")) {
-      const sharing = body.quotaSharing;
-      if (!sharing || typeof sharing !== "object" || Array.isArray(sharing)
-        || typeof sharing.enabled !== "boolean" || !Array.isArray(sharing.apiKeyIds)
-        || sharing.apiKeyIds.some((keyId) => typeof keyId !== "string" || !keyId.trim())) {
-        return NextResponse.json({ error: "Quota sharing requires enabled and an array of API key IDs" }, { status: 400 });
-      }
-      const apiKeyIds = [...new Set(sharing.apiKeyIds)];
-      if (sharing.enabled) {
-        const activeIds = new Set((await getApiKeys()).filter((key) => key.isActive).map((key) => key.id));
-        if (!apiKeyIds.length || apiKeyIds.some((keyId) => !activeIds.has(keyId))) {
-          return NextResponse.json({ error: "Select at least one active API key; remove deleted or inactive keys" }, { status: 400 });
-        }
-      }
-      // Membership is configuration only. Never accept client-supplied usage or reset the ledger.
-      updateData.quotaSharing = { enabled: sharing.enabled, apiKeyIds };
-    }
     if (name !== undefined) updateData.name = name;
     if (priority !== undefined) updateData.priority = priority;
     if (globalPriority !== undefined) updateData.globalPriority = globalPriority;

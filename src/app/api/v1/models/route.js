@@ -5,7 +5,7 @@ import {
   isAnthropicCompatibleProvider,
   isOpenAICompatibleProvider,
 } from "@/shared/constants/providers";
-import { getProviderConnections, getApiKeys, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
+import { getProviderConnections, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -260,18 +260,8 @@ export async function buildModelsList(kindFilter, options = {}) {
   try {
     connections = await getProviderConnections();
     connections = connections.filter(c => c.isActive !== false);
-    // Do not use a protected account to fetch a live catalog for an unrelated
-    // caller. Static models remain visible; access itself is enforced later.
-    const apiKey = options.apiKey || null;
-    const hasSharedConnection = connections.some((connection) => connection?.quotaSharing?.enabled);
-    const activeKey = hasSharedConnection && apiKey ? (await getApiKeys()).find((key) => key.isActive && key.key === apiKey) : null;
-    connections = connections.filter((connection) => {
-      const sharing = connection?.quotaSharing;
-      return !sharing?.enabled || (Array.isArray(sharing.apiKeyIds) && activeKey && sharing.apiKeyIds.includes(activeKey.id));
-    });
   } catch (e) {
     console.log("Could not fetch providers, returning all models");
-    connections = [];
   }
 
   let combos = [];
@@ -582,9 +572,7 @@ export async function GET(request) {
   try {
     // Detect cross-instance recursive /models fetch (another 9router fetching our /models)
     const skipDynamicFetch = request?.headers?.get(INTERNAL_MODELS_FETCH_HEADER) === "1";
-    const auth = request.headers.get("authorization");
-    const apiKey = auth?.startsWith("Bearer ") ? auth.slice(7) : request.headers.get("x-api-key");
-    const data = await buildModelsList([LLM_KIND], { skipDynamicFetch, apiKey });
+    const data = await buildModelsList([LLM_KIND], { skipDynamicFetch });
     return Response.json({ object: "list", data }, {
       headers: { "Access-Control-Allow-Origin": "*" },
     });

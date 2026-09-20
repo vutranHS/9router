@@ -433,10 +433,6 @@ export default function ProviderLimits() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Could not save this connection. Try again.");
-        }
         if (res.ok) {
           await fetchConnections();
           setShowEditModal(false);
@@ -447,7 +443,6 @@ export default function ProviderLimits() {
         }
       } catch (error) {
         console.error("Error saving connection:", error);
-        throw error;
       }
     },
     [selectedConnection, fetchConnections, fetchQuota],
