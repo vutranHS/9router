@@ -32,10 +32,13 @@ percentage points per weighted dollar for each quota window independently.
 
 An atomic SQLite lease permits one in-flight request per shared account.
 Before calibration, each request reserves an estimated 0.25 percentage points;
-at most 1 point of unobserved bootstrap liability is admitted. Requests are
-limited to 128k estimated input and 64k output tokens. After calibration,
-admission reserves the estimated input plus requested maximum output at the
-highest observed rate. Reduce `max_tokens` if this exceeds the released share.
+at most 1 point of unobserved bootstrap liability is admitted. Quota sharing
+does not impose a fixed input/context or output-token cap; the upstream model
+enforces its own limits. After calibration, admission reserves the estimated
+input plus requested maximum output at the highest observed rate, applying
+long-context pricing when applicable. If the client omits an output limit,
+64k tokens are used only as a reservation estimate; the request is not modified.
+Reduce the requested output limit if this exceeds the released share.
 These estimates cannot guarantee that a single request stays within its reservation.
 
 Actual usage settles the lease. Unknown usage, disconnects and crashes retain

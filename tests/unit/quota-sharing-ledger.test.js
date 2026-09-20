@@ -37,6 +37,59 @@ describe("quota sharing durable bootstrap ledger", () => {
     } };
   });
 
+  it.each([
+    ["max_tokens", 129000, 128000, 20, 50],
+    ["max_completion_tokens", 272000, 128000, 20, 50],
+    ["max_output_tokens", 272001, 128000, 40, 75],
+    ["max_output_tokens", 1050000, 262144, 40, 75],
+  ])("admits %s above the old caps and reserves the full cost (%i input tokens)", async (field, input, output, inputRate, outputRate) => {
+    const request = { input: "", [field]: output };
+    request.input = "a".repeat(input * 4 - JSON.stringify(request).length);
+    const account = { _connection: { ...credentials()._connection, provider: "codex" } };
+    const result = await reserveQuota({ credentials: account, apiKeyId: "a", provider: "codex", model: "gpt-6-astra", body: request });
+    expect(result.ok).toBe(true);
+    expect(state().reservations[result.reservationId].estimatedWeight)
+      .toBeCloseTo((input * inputRate + output * outputRate) / 1e6, 12);
+    expect(request[field]).toBe(output);
+    expect(request.input.length).toBe(input * 4 - JSON.stringify({ input: "", [field]: output }).length);
+  });
+
+  it("still rejects a large request that exceeds its calibrated quota share", async () => {
+    const reset = resetAt();
+    fixture.usage = { quotas: { "weekly (7d)": { remainingPercentage: 80, resetAt: reset } } };
+    seed({ lastProbeAt: Date.now(), snapshot: fixture.usage, windows: {
+      "weekly (7d)": { resetAt: Date.parse(reset), remaining: 80, used: {}, pointsPerWeight: 1 },
+    }, reservations: {}, pending: {} });
+    const account = { _connection: { ...credentials()._connection, provider: "codex" } };
+    const result = await reserveQuota({ credentials: account, apiKeyId: "a", provider: "codex", model: "gpt-6-astra",
+      body: { input: "a".repeat(4000000), max_output_tokens: 262144 } });
+    expect(result).toMatchObject({ ok: false, status: 429, error: expect.stringContaining("share") });
+    expect(state().reservations).toEqual({});
+  });
+
+  it("uses the existing output estimate only when no limit is supplied", async () => {
+    const request = { input: "hello" };
+    const result = await reserveQuota({ credentials: credentials(), apiKeyId: "a", provider: "claude", model: "claude-sonnet-5", body: request });
+    expect(result.ok).toBe(true);
+    expect(state().reservations[result.reservationId].estimatedWeight)
+      .toBeCloseTo((Math.ceil(JSON.stringify(request).length / 4) * 4 + 64000 * 10) / 1e6, 12);
+    expect(request).toEqual({ input: "hello" });
+  });
+
+  it.each([0, -1, 1.5, "invalid", true, Infinity, NaN, Number.MAX_VALUE])("rejects an invalid explicit output limit (%s)", async (output) => {
+    const result = await reserveQuota({ credentials: credentials(), apiKeyId: "a", provider: "claude", model: "claude-sonnet-5",
+      body: { input: "hello", max_output_tokens: output } });
+    expect(result).toMatchObject({ ok: false, status: 429, error: expect.stringContaining("valid positive token estimates") });
+    expect(fixture.usageFetch).not.toHaveBeenCalled();
+    expect(fixture.rows.size).toBe(0);
+  });
+
+  it("keeps unknown pricing fail-closed without claiming a token cap", async () => {
+    const result = await reserveQuota({ credentials: credentials(), apiKeyId: "a", provider: "claude", model: "unpriced-model", body });
+    expect(result).toMatchObject({ ok: false, status: 429, error: expect.stringContaining("known model pricing") });
+    expect(fixture.usageFetch).not.toHaveBeenCalled();
+  });
+
   it("keeps an unobserved completed request as debt across a stale percentage read", async () => {
     const first = await reserveQuota({ credentials: credentials(), apiKeyId: "a", provider: "claude", model: "claude-sonnet-5", body });
     expect(first.ok).toBe(true);

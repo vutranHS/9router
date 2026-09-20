@@ -14,8 +14,8 @@ const LEASE_TTL = 15 * 60000;
 // Estimated liabilities, not a promise that a bootstrap request cannot consume more quota.
 const BOOTSTRAP_POINTS = 0.25;
 const MAX_UNOBSERVED_POINTS = 1;
-const MAX_INPUT = 128000;
-const MAX_OUTPUT = 64000;
+// Reservation estimate only when the client omits an output limit, not a request cap.
+const DEFAULT_OUTPUT_ESTIMATE = 64000;
 
 const finite = (value) => value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value)) ? Number(value) : null;
 const isFable = (model) => /fable/i.test(String(model || ""));
@@ -102,13 +102,18 @@ function actualWeight(provider, model, usage) {
 }
 
 function estimateWeight(provider, model, body) {
-  const price = getPricingForModel(provider, model);
+  let price = getPricingForModel(provider, model);
   if (!price) return null;
   const input = estimateInputTokens(body);
-  const output = finite(body?.max_tokens ?? body?.max_completion_tokens ?? body?.max_output_tokens) ?? MAX_OUTPUT;
-  if (input <= 0 || input > MAX_INPUT || output <= 0 || output > MAX_OUTPUT) return null;
+  const requestedOutput = body?.max_tokens ?? body?.max_completion_tokens ?? body?.max_output_tokens;
+  const output = requestedOutput === undefined ? DEFAULT_OUTPUT_ESTIMATE : finite(requestedOutput);
+  if (!Number.isSafeInteger(input) || input <= 0 || !Number.isSafeInteger(output) || output <= 0) return null;
+  if (price.long_context && input > price.long_context.above) {
+    price = { ...price, ...price.long_context };
+  }
   const inputPrice = Math.max(price.input, price.cache_creation || 0, price.cache_creation_1h || price.input * 2);
-  return (input * inputPrice + output * price.output) / 1e6;
+  const weight = (input * inputPrice + output * price.output) / 1e6;
+  return Number.isFinite(weight) && weight > 0 ? weight : null;
 }
 
 function reconcile(state, windows, now) {
@@ -202,7 +207,7 @@ export async function reserveQuota({ credentials, apiKeyId, provider, model, bod
     return { ok: false, status: 403, error: "This account is shared only with selected active API keys" };
   }
   const estimatedWeight = estimateWeight(provider, model, body);
-  if (!estimatedWeight) return denied("Shared accounts require known model pricing, at most 128k estimated input and 64k output tokens; reduce the request or output limit");
+  if (!estimatedWeight) return denied("Shared accounts require known model pricing and valid positive token estimates; check the request and output limit");
   const connection = { ...original, accessToken: credentials.accessToken ?? original.accessToken, providerSpecificData: credentials.providerSpecificData ?? original.providerSpecificData };
   const db = await getAdapter();
   const snapshot = await snapshotFor(db, connection);
