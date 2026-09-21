@@ -75,11 +75,11 @@ async function readForwardableBody(request) {
   return { raw: buf, parsed: null, contentType };
 }
 
-async function resolveVideoProvider(parsedBody) {
+async function resolveVideoProvider(parsedBody, apiKey = null) {
   if (!parsedBody?.model) return { provider: DEFAULT_VIDEO_PROVIDER, model: null };
 
   const modelStr = String(parsedBody.model);
-  const modelInfo = await getModelInfo(modelStr);
+  const modelInfo = await getModelInfo(modelStr, apiKey);
   if (!modelInfo.provider) {
     return { error: errorResponse(HTTP_STATUS.BAD_REQUEST, "Combos are not supported for video generation") };
   }
@@ -113,7 +113,8 @@ export async function handleVideoCreate(request, action) {
   const bodyInfo = await readForwardableBody(request);
   if (bodyInfo.error) return bodyInfo.error;
 
-  const resolved = await resolveVideoProvider(bodyInfo.parsed);
+  // extractApiKey is a pure header read; requireValidApiKey doesn't hand the key back.
+  const resolved = await resolveVideoProvider(bodyInfo.parsed, extractApiKey(request));
   if (resolved.error) return resolved.error;
   const { provider, model } = resolved;
 

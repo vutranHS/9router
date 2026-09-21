@@ -17,6 +17,7 @@ import EndpointRow from "./components/EndpointRow";
 import StatusAlert from "./components/StatusAlert";
 import Tooltip from "./components/Tooltip";
 import SecurityWarning from "./components/SecurityWarning";
+import KeyRemapModal from "./components/KeyRemapModal";
 export default function APIPageClient({ machineId }) {
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,11 @@ export default function APIPageClient({ machineId }) {
   const [newKeyName, setNewKeyName] = useState("");
   const [createdKey, setCreatedKey] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
+
+  // Per-key model remap: { "<api key>": { "<source model>": "<provider>/<model>" } }
+  const [remaps, setRemaps] = useState({});
+  const [remapKey, setRemapKey] = useState(null);
+  const [activeProviders, setActiveProviders] = useState([]);
 
   const [requireApiKey, setRequireApiKey] = useState(false);
   const [requireLogin, setRequireLogin] = useState(true);
@@ -275,10 +281,37 @@ export default function APIPageClient({ machineId }) {
         } catch { /* fall through to empty render */ }
       }
       setKeys(existing);
+
+      // Remap rules + the provider list the model picker needs. Neither is
+      // required to render the key list, so failures stay silent.
+      try {
+        const [remapRes, providersRes] = await Promise.all([
+          fetch("/api/keys/remap", { cache: "no-store" }),
+          fetch("/api/providers", { cache: "no-store" }),
+        ]);
+        if (remapRes.ok) setRemaps((await remapRes.json()).remaps || {});
+        if (providersRes.ok) setActiveProviders((await providersRes.json()).connections || []);
+      } catch { /* remap UI degrades to empty */ }
     } catch (error) {
       console.log("Error fetching data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveRemap = async (apiKey, rules) => {
+    const previous = remaps;
+    setRemaps((prev) => ({ ...prev, [apiKey]: rules }));   // optimistic
+    try {
+      const res = await fetch("/api/keys/remap", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: apiKey, rules }),
+      });
+      if (!res.ok) setRemaps(previous);
+    } catch (error) {
+      console.log("Error saving model remap:", error);
+      setRemaps(previous);
     }
   };
 
@@ -1064,6 +1097,17 @@ export default function APIPageClient({ machineId }) {
                     title={key.isActive ? "Pause key" : "Resume key"}
                   />
                   <button
+                    onClick={() => setRemapKey(key)}
+                    className={`relative p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-all ${
+                      Object.keys(remaps[key.key] || {}).length
+                        ? "text-primary opacity-100"
+                        : "text-text-muted hover:text-primary opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                    }`}
+                    title="Model remap"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                  </button>
+                  <button
                     onClick={() => handleDeleteKey(key.id)}
                     className="p-2 hover:bg-red-500/10 rounded text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                   >
@@ -1292,6 +1336,17 @@ export default function APIPageClient({ machineId }) {
       </Modal>
 
       {/* Confirm Modal */}
+      <KeyRemapModal
+        isOpen={!!remapKey}
+        onClose={() => setRemapKey(null)}
+        apiKey={remapKey?.key}
+        keyName={remapKey?.name}
+        rules={remaps[remapKey?.key] || {}}
+        onSave={handleSaveRemap}
+        activeProviders={activeProviders}
+        requireApiKey={requireApiKey}
+      />
+
       <ConfirmModal
         isOpen={!!confirmState}
         onClose={() => setConfirmState(null)}

@@ -55,6 +55,11 @@ export {
   getDisabledModels, getDisabledByProvider, disableModels, enableModels,
 } from "./repos/disabledModelsRepo.js";
 
+// Per-API-key model remapping
+export {
+  getRemapForKey, getAllRemaps, setRemapForKey,
+} from "./repos/modelRemapRepo.js";
+
 // Usage
 export {
   statsEmitter, trackPendingRequest, getActiveRequests,

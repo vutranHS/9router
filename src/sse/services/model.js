@@ -1,5 +1,7 @@
 // Re-export from open-sse with localDb integration
 import { getModelAliases, getComboByName, getProviderNodes } from "@/lib/localDb";
+import { getRemapForKey } from "@/lib/keyModelRemapDb";
+import * as log from "../utils/logger.js";
 import { parseModel as parseModelCore, resolveModelAliasFromMap, getModelInfoCore } from "open-sse/services/model.js";
 import REGISTRY from "open-sse/providers/registry/index.js";
 
@@ -33,9 +35,10 @@ export async function resolveModelAlias(alias) {
 }
 
 /**
- * Get full model info (parse or resolve)
+ * Resolve a model string to { provider, model }. A null provider means the
+ * string is a combo name, which the caller handles separately.
  */
-export async function getModelInfo(modelStr) {
+async function resolveModelInfo(modelStr) {
   const parsed = parseModel(modelStr);
 
   if (!parsed.isAlias) {
@@ -76,6 +79,38 @@ export async function getModelInfo(modelStr) {
   }
 
   return getModelInfoCore(modelStr, getModelAliases);
+}
+
+/**
+ * Get full model info, applying the caller's per-API-key model remap.
+ *
+ * Remap runs AFTER resolution, so one rule keyed on the bare model name catches
+ * every spelling that resolves to it — `cc/x`, `claude/x`, an alias pointing at
+ * it, and combo members (combo.js re-enters this path per member).
+ *
+ * Applied once, never chained — same convention as alias resolution, which also
+ * resolves a single hop. That makes A→B→A cycles structurally impossible.
+ *
+ * Fail-open: any lookup error leaves the original model untouched.
+ */
+export async function getModelInfo(modelStr, apiKey = null) {
+  const info = await resolveModelInfo(modelStr);
+  // No key (local/preview path) or a combo name (provider === null): leave alone.
+  if (!apiKey || !info?.provider) return info;
+
+  try {
+    const target = (await getRemapForKey(apiKey))?.[info.model];
+    if (!target) return info;
+    const remapped = parseModel(target);
+    // A rule must name a full provider/model; anything else is ignored rather
+    // than routed somewhere unintended.
+    if (!remapped?.provider || !remapped?.model) return info;
+    log.info("REMAP", `${info.provider}/${info.model} \u2192 ${remapped.provider}/${remapped.model} (key ${log.maskKey(apiKey)})`);
+    return { provider: remapped.provider, model: remapped.model };
+  } catch (e) {
+    log.debug("REMAP", `skipped: ${e.message}`);
+    return info;
+  }
 }
 
 /**
