@@ -55,7 +55,9 @@ export function extractUsageFromResponse(responseBody) {
   if (usageMetadata) {
     return {
       prompt_tokens: usageMetadata.promptTokenCount || 0,
-      completion_tokens: usageMetadata.candidatesTokenCount || 0,
+      // thoughts are output, and reasoning_tokens must stay a subset of
+      // completion_tokens (see canonicalizeUsage / toOpenAIUsage).
+      completion_tokens: (usageMetadata.candidatesTokenCount || 0) + (usageMetadata.thoughtsTokenCount || 0),
       cached_tokens: usageMetadata.cachedContentTokenCount || 0,
       reasoning_tokens: usageMetadata.thoughtsTokenCount || 0
     };

@@ -293,7 +293,10 @@ export function extractUsage(chunk) {
   if (usageMeta && typeof usageMeta === "object") {
     return normalizeUsage({
       prompt_tokens: usageMeta.promptTokenCount || 0,
-      completion_tokens: usageMeta.candidatesTokenCount || 0,
+      // thoughtsTokenCount is reported alongside candidatesTokenCount, not
+      // inside it. Fold it in so reasoning_tokens stays a subset of
+      // completion_tokens, matching toOpenAIUsage()'s gemini extractor.
+      completion_tokens: (usageMeta.candidatesTokenCount || 0) + (usageMeta.thoughtsTokenCount || 0),
       total_tokens: usageMeta.totalTokenCount,
       cached_tokens: usageMeta.cachedContentTokenCount,
       reasoning_tokens: usageMeta.thoughtsTokenCount

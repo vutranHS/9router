@@ -204,8 +204,11 @@ export function translateNonStreamingResponse(responseBody, targetFormat, source
 
     if (usage) {
       result.usage = {
-        prompt_tokens: (usage.promptTokenCount || 0) + (usage.thoughtsTokenCount || 0),
-        completion_tokens: usage.candidatesTokenCount || 0,
+        prompt_tokens: usage.promptTokenCount || 0,
+        // thinking tokens bill as output, not input — keep them in
+        // completion_tokens so completion_tokens_details.reasoning_tokens
+        // below stays a subset of it.
+        completion_tokens: (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0),
         total_tokens: usage.totalTokenCount || 0
       };
       if (usage.thoughtsTokenCount > 0) {

@@ -17,7 +17,10 @@ const USAGE_METADATA = {
 
 const EXPECTED = {
   prompt_tokens: 1234,
-  completion_tokens: 56,
+  // candidates + thoughts: reasoning_tokens is a subset of completion_tokens,
+  // so thinking tokens must be inside it (they bill as output, and pricing.js
+  // splits the subset back out at the reasoning rate).
+  completion_tokens: 146,
   cached_tokens: 78,
   reasoning_tokens: 90,
 };

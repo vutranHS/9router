@@ -441,9 +441,14 @@ export function calculateCostFromTokens(tokens, pricing) {
   }
 
   const outputTokens = tokens.completion_tokens || tokens.output_tokens || 0;
-  cost += outputTokens * (pricing.output / 1000000);
+  // reasoning_tokens is a SUBSET of completion_tokens (the OpenAI
+  // completion_tokens_details convention every producer canonicalizes to), so
+  // bill the reasoning slice at its own rate and the remainder at the output
+  // rate. Adding it on top double-charged every reasoning model. Clamp so a
+  // producer that reports an over-large count can never drive output negative.
+  const reasoningTokens = Math.min(tokens.reasoning_tokens || 0, outputTokens);
+  cost += (outputTokens - reasoningTokens) * (pricing.output / 1000000);
 
-  const reasoningTokens = tokens.reasoning_tokens || 0;
   if (reasoningTokens > 0) {
     cost += reasoningTokens * ((pricing.reasoning || pricing.output) / 1000000);
   }

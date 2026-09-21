@@ -1,3 +1,9 @@
+# v0.5.82 (2026-09-21)
+
+## Fixes
+- **Pricing**: stop double-charging reasoning tokens. `reasoning_tokens` is a subset of `completion_tokens`, but the cost math billed it again on top of the full output total — a reasoning-heavy Astra request (10k in / 5k out, 4k of it reasoning) was billed $0.55 instead of $0.35 (~1.57x). Output is now split: the reasoning slice at the reasoning rate, the remainder at the output rate, clamped so an over-large upstream count can't drive the output charge negative
+- **Usage (Gemini/Antigravity)**: fold `thoughtsTokenCount` into `completion_tokens` in the three extractors that reported it alongside instead of inside, so `reasoning_tokens` is a subset everywhere (matching `toOpenAIUsage()`); the non-streaming Gemini path also billed thinking tokens as *input* — they are output
+
 # v0.5.76 (2026-09-11)
 
 ## Fixes
