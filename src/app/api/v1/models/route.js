@@ -540,6 +540,20 @@ export async function buildModelsList(kindFilter, options = {}) {
     }
   }
 
+  // noAuth image providers (e.g. muse) route without a connection, so surface
+  // their registry image models even when other providers are connected.
+  const NOAUTH_IMAGE_PROVIDERS = ["muse"];
+  for (const providerId of NOAUTH_IMAGE_PROVIDERS) {
+    if (activeConnectionByProvider.has(providerId)) continue;
+    if (!providerMatchesKinds(providerId, kindFilter)) continue;
+    const alias = PROVIDER_ID_TO_ALIAS[providerId] || providerId;
+    for (const model of (PROVIDER_MODELS[alias] || [])) {
+      if (!kindFilter.includes(modelKind(model))) continue;
+      if (isDisabled(alias, model.id)) continue;
+      models.push({ id: `${alias}/${model.id}`, object: "model", owned_by: alias });
+    }
+  }
+
   const dedupedModels = [];
   const seenModelIds = new Set();
   for (const model of models) {
