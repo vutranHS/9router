@@ -22,6 +22,6 @@ export default {
   // gateway's own localhost (e.g. 9router in Docker -> host.docker.internal).
   imageConfig: {
     baseUrl: process.env.MUSE_IMAGE_URL || "http://127.0.0.1:8799/v1/images/generations",
-    bodyFields: ["model", "prompt", "n"],
+    bodyFields: ["model", "prompt", "n", "size", "quality"],
   },
 };
