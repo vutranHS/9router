@@ -1,3 +1,8 @@
+# v0.5.86 (2026-09-21)
+
+## Features
+- **Routing**: per-API-key model remapping. A key that burns through an expensive model can be pointed at a cheaper one without disabling that model for everyone else — set rules per key under Endpoint → the key's `⇄` button. Rules are keyed by the bare model name and applied after resolution, so one rule catches every way of addressing the model: `cc/x`, `claude/x`, an alias pointing at it, and members inside a combo. Combo names themselves still expand normally, rules apply exactly once (never chained, so cycles are impossible), and malformed rules or a DB error fail open. Remap sits above usage/pricing, so billing records the model that actually ran
+
 # v0.5.82 (2026-09-21)
 
 ## Fixes
