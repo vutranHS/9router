@@ -10,9 +10,17 @@ export function normalizeQuota(usage, family = 'normal') {
   const q = usage?.quotas || {};
   const prefix = family === 'normal' ? '' : family + '_';
   const primary = q[prefix + 'session'];
+  const secondary = q[prefix + 'weekly'];
   const weeklyPrimary = primary?.windowSeconds === 604800;
-  const five = q['session (5h)'] || (!weeklyPrimary && primary?.windowSeconds === 18000 ? primary : null);
-  const seven = q['weekly (7d)'] || (weeklyPrimary ? primary : q[prefix + 'weekly']?.windowSeconds === 604800 ? q[prefix + 'weekly'] : null);
+  // Codex reports a primary (short) window and an optional secondary (weekly) one.
+  // Map by role: a non-weekly primary is the 5h window, the secondary is the 7d
+  // window. Accept an explicit 18000/604800 duration OR an absent one — some codex
+  // usage responses omit limit_window_seconds, which previously dropped both windows
+  // and showed "--". A *defined* non-standard duration is still rejected (not mislabeled).
+  const isFive = w => w && (w.windowSeconds === 18000 || w.windowSeconds == null);
+  const isSeven = w => w && (w.windowSeconds === 604800 || w.windowSeconds == null);
+  const five = q['session (5h)'] || (!weeklyPrimary && isFive(primary) ? primary : null);
+  const seven = q['weekly (7d)'] || (weeklyPrimary ? primary : isSeven(secondary) ? secondary : null);
   return { five_hour: windowData(five), seven_day: windowData(seven) };
 }
 export function createQuotaHandler({ validateKey, store, getConnection, getUsage, quotaFamily = () => 'normal', now = Date.now }) {

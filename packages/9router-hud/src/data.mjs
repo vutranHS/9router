@@ -66,27 +66,60 @@ export async function findRollout(root, session, depth = 0) {
   }
   return null;
 }
+// Presentation. Colors are on by default (the Claude status line and the Codex
+// pane both render ANSI); NO_COLOR / TERM=dumb fall back to plain glyphs. Only
+// trusted structural text is painted — user-supplied strings (account label,
+// tool names) still go through clean() so they can never inject escapes.
+const paint = process.env.NO_COLOR == null && process.env.TERM !== 'dumb';
+const sgr = (...codes) => paint ? '\x1b[' + codes.join(';') + 'm' : '';
+const RESET = paint ? '\x1b[0m' : '';
+const tint = (text, ...codes) => paint && codes.length ? sgr(...codes) + text + RESET : text;
+const dot = () => tint('·', 90);
+const lbl = s => tint(s, 96, 1);                                   // bright cyan, bold
+const usageColor = pct => !Number.isFinite(pct) ? 90 : pct < 50 ? 92 : pct < 80 ? 93 : 91;
+const leftColor = left => left > 50 ? 92 : left > 20 ? 93 : 91;
+function gauge(pct, width = 8) {
+  if (!Number.isFinite(pct)) return tint('░'.repeat(width), 90);
+  const filled = Math.max(0, Math.min(width, Math.round(Math.max(0, Math.min(100, pct)) / 100 * width)));
+  return tint('█'.repeat(filled), usageColor(pct)) + tint('░'.repeat(width - filled), 90);
+}
 function remaining(window, now) {
-  if (!window || !Number.isFinite(window.used_percentage)) return '--';
+  if (!window || !Number.isFinite(window.used_percentage)) return tint('--', 90);
   const reset = window.resets_at ? new Date(window.resets_at).getTime() : NaN;
-  if (Number.isFinite(reset) && reset <= now) return 'awaiting refresh';
+  if (Number.isFinite(reset) && reset <= now) return tint('awaiting refresh', 93);
   const mins = Number.isFinite(reset) ? Math.ceil((reset - now) / 60000) : null;
   const time = mins == null ? '' : mins >= 1440 ? Math.floor(mins / 1440) + 'd ' + Math.floor(mins % 1440 / 60) + 'h' : Math.floor(mins / 60) + 'h ' + mins % 60 + 'm';
-  return Math.round(100 - window.used_percentage) + '% left' + (time ? ' (' + time + ')' : '');
+  const left = Math.round(100 - window.used_percentage);
+  return tint(left + '% left', leftColor(left)) + (time ? tint(' (' + time + ')', 90) : '');
 }
 export function render(state, now = Date.now()) {
   const c = state.context;
   const number = n => Number.isFinite(n) ? (n / 1000).toFixed(1) + 'k' : '?';
-  const ctx = Number.isFinite(c?.percent) ? Math.round(c.percent) + '% ' + number(c.used) + '/' + number(c.total) : '--';
   const q = state.quota || {};
   const label = clean(q.account?.label || 'waiting for first response');
   const age = q.updated_at ? Math.max(0, Math.floor((now - Date.parse(q.updated_at)) / 60000)) : null;
   const stale = q.status === 'stale' || (age != null && age >= 5);
-  const status = state.offline ? ' | router offline' : q.status && !['ok', 'waiting'].includes(q.status) ? ' | ' + clean(q.status) : '';
   const tools = state.tools || { count: 0, running: [] };
-  return [
-    'Context ' + ctx + ' | Account ' + label + status,
-    '5h ' + remaining(q.five_hour, now) + ' | 7d ' + remaining(q.seven_day, now) + (age != null ? ' | updated ' + age + 'm ago' : '') + (stale ? ' [stale]' : ''),
-    'Tools (recent) ' + tools.count + (tools.running.length ? ' | running: ' + tools.running.map(n => clean(n)).join(', ') : ''),
-  ].join('\n');
+  const sep = ' ' + dot() + ' ';
+
+  const ctxPct = Number.isFinite(c?.percent) ? Math.round(c.percent) : null;
+  const ctx = ctxPct != null
+    ? tint(ctxPct + '%', usageColor(ctxPct)) + ' ' + tint(number(c.used) + '/' + number(c.total), 2) + ' ' + gauge(ctxPct)
+    : tint('--', 90);
+  const status = state.offline
+    ? sep + tint('router offline', 91, 1)
+    : q.status && !['ok', 'waiting'].includes(q.status) ? sep + tint(clean(q.status), 93) : '';
+  const line1 = tint('◆', 95) + ' ' + lbl('Context') + ' ' + ctx + sep + lbl('Account') + ' ' + tint(label, 97) + status;
+
+  const updated = age != null ? sep + tint('updated ' + age + 'm ago', 90) : '';
+  const staleTag = stale ? ' ' + tint('[stale]', 93, 1) : '';
+  const line2 = tint('◷', 96) + ' ' + lbl('5h') + ' ' + remaining(q.five_hour, now)
+    + sep + lbl('7d') + ' ' + remaining(q.seven_day, now) + updated + staleTag;
+
+  const running = tools.running.length
+    ? sep + tint('running ', 90) + tools.running.map(n => tint(clean(n), 93)).join(tint(', ', 90))
+    : '';
+  const line3 = tint('▸', 92) + ' ' + lbl('Tools') + ' ' + tint(String(tools.count), 1) + running;
+
+  return [line1, line2, line3].join('\n');
 }

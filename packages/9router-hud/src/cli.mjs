@@ -11,6 +11,7 @@ import { routerBase, startProxy } from './proxy.mjs';
 import { Writable } from 'node:stream';
 import { protectWindowsHome, windowsInvocation, windowsStatusCommand, windowsTerminalArgs } from './windows.mjs';
 import { findBinary, shouldBypass, install, uninstall } from './install.mjs';
+import { detectClaude, detectCodex, claudeDir, codexHome } from './detect.mjs';
 
 const entry = fileURLToPath(import.meta.url);
 const home = process.env.NINE_ROUTER_HUD_HOME || (process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), '9router-hud') : path.join(os.homedir(), '.config', '9router-hud'));
@@ -26,12 +27,28 @@ async function save(file, value) {
     await rename(temp, file);
   } finally { await rm(temp, { force: true }); }
 }
-async function config() {
+// Per-CLI endpoint + key. Resolve base and key independently down the chain:
+// explicit env → auto-detect from the CLI's own config → HUD config.json.
+async function detectFor(kind) {
+  if (kind === 'claude') return detectClaude(claudeDir());
+  if (kind === 'codex') return detectCodex(codexHome());
+  return {};
+}
+async function config(kind) {
   const c = await json(path.join(home, 'config.json'));
-  const base = process.env.NINE_ROUTER_URL || c.url;
-  const key = process.env.NINE_ROUTER_API_KEY || c.apiKey;
-  if (!base || !key) throw new Error('Run 9router-hud configure, or set NINE_ROUTER_URL and NINE_ROUTER_API_KEY.');
+  const detected = await detectFor(kind);
+  const base = process.env.NINE_ROUTER_URL || detected.url || c.url;
+  const key = process.env.NINE_ROUTER_API_KEY || detected.key || c.apiKey;
+  if (!base || !key) throw new Error('Cannot resolve router endpoint/key for ' + (kind || 'CLI') + '. Configure ' + (kind === 'codex' ? 'Codex (config.toml)' : 'Claude (settings.json)') + ', run 9router-hud setup, or set NINE_ROUTER_URL and NINE_ROUTER_API_KEY.');
   return { base: routerBase(base), key };
+}
+// install/setup validation: at least one CLI must be resolvable.
+async function ensureConfigured() {
+  const kinds = ['claude', 'codex'];
+  const results = await Promise.all(kinds.map(k => config(k).then(c => ({ k, c })).catch(() => null)));
+  const ok = results.filter(Boolean);
+  if (!ok.length) throw new Error('No router endpoint/key detected from Claude settings.json or Codex config.toml. Run 9router-hud configure --url URL --key-stdin, or set NINE_ROUTER_URL and NINE_ROUTER_API_KEY.');
+  return ok;
 }
 async function configure(args) {
   if (process.platform === 'win32') await protectWindowsHome(home);
@@ -66,7 +83,7 @@ async function watch(id) {
     try { await access(dirFor(id)); } catch (error) { if (error.code === 'ENOENT') process.exit(0); throw error; }
     const state = await json(path.join(dirFor(id), 'state.json'));
     if (state.pid) { try { process.kill(state.pid, 0); } catch (error) { if (error.code === 'ESRCH') process.exit(0); } }
-    const output = render(state).split('\n').map(l => l.slice(0, process.stdout.columns || 160)).join('\n');
+    const output = render(state).split('\n').map(l => l.slice(0, process.stdout.columns || 160) + '\x1b[0m').join('\n');
     process.stdout.write('\x1b[2J\x1b[H' + output);
   };
   await print();
@@ -131,7 +148,18 @@ async function run(kind, id, args, c, tmuxName = null) {
     env.ANTHROPIC_AUTH_TOKEN = c.key;
     delete env.ANTHROPIC_API_KEY;
     const command = process.platform === 'win32' ? windowsStatusCommand(process.execPath, entry, id, home) : [process.execPath, entry, 'status', id].map(quote).join(' ');
-    launchArgs = [...rest, '--settings', JSON.stringify({ ...settings, statusLine: { type: 'command', command } })];
+    // Force the proxy at highest precedence: settings supplied via --settings beat
+    // ~/.claude/settings.json env and OS env vars, so a stale ANTHROPIC_BASE_URL left
+    // in settings.json can no longer bypass the HUD proxy. Written to a 0600 file in
+    // the session dir (removed on exit) so the token never appears in child argv.
+    const merged = {
+      ...settings,
+      env: { ...(settings.env || {}), ANTHROPIC_BASE_URL: proxy.base, ANTHROPIC_AUTH_TOKEN: c.key, ANTHROPIC_API_KEY: '' },
+      statusLine: { type: 'command', command },
+    };
+    const settingsPath = path.join(dir, 'claude-settings.json');
+    await save(settingsPath, merged);
+    launchArgs = [...rest, '--settings', settingsPath];
   } else {
     const settings = [
       'model_provider="nine-router-hud"',
@@ -170,7 +198,10 @@ async function launchCodex(args, c) {
     const id = randomUUID();
     const dir = dirFor(id);
     await save(path.join(dir, 'launch.json'), { c, args, codexHome: process.env.CODEX_HOME, path: process.env.PATH, cwd: process.cwd() });
-    const started = spawnSync('wt.exe', windowsTerminalArgs({ node: process.execPath, entry, home, id, cwd: process.cwd() }), { encoding: 'utf8', windowsHide: true });
+    // Do NOT pass windowsHide here: wt.exe is a GUI launcher and windowsHide
+    // (CREATE_NO_WINDOW) suppresses the Terminal window entirely — it reports
+    // success but no window ever appears.
+    const started = spawnSync('wt.exe', windowsTerminalArgs({ node: process.execPath, entry, home, id, cwd: process.cwd() }), { encoding: 'utf8' });
     if (started.status !== 0) {
       await rm(dir, { recursive: true, force: true });
       throw new Error('Cannot launch Windows Terminal. Install Windows Terminal and enable its wt.exe app execution alias. ' + (started.stderr || started.error?.message || ''));
@@ -201,7 +232,7 @@ async function main() {
   const [command, ...raw] = process.argv.slice(2);
   const args = raw[0] === '--' ? raw.slice(1) : raw;
   if (command === 'install') {
-    await config();
+    await ensureConfigured();
     const result = await install({ home, entry });
     console.log('Installed wrappers: ' + result.kinds.join(', ') + '. Open a new terminal, then type claude or codex.');
     console.log('Shell configuration: ' + result.rc + '. Existing shell aliases/functions must be removed manually if they shadow these commands.');
@@ -213,21 +244,28 @@ async function main() {
     return;
   }
   if (command === 'setup') {
-    await configure(args);
-    const saved = await json(path.join(home, 'config.json'));
-    if (!saved.apiKey) {
-      if (process.env.NINE_ROUTER_API_KEY) saved.apiKey = process.env.NINE_ROUTER_API_KEY;
-      else {
-        if (!process.stdin.isTTY) throw new Error('Use setup --url URL --key-stdin for noninteractive setup.');
-        process.stdout.write('9router API key (hidden): ');
-        const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
-        const rl = createInterface({ input: process.stdin, output: muted, terminal: true });
-        try { saved.apiKey = (await rl.question('')).trim(); } finally { rl.close(); process.stdout.write('\n'); }
+    if (process.platform === 'win32') await protectWindowsHome(home);
+    // Auto-detect first from the CLIs' own config. Only fall back to the manual
+    // URL/key prompt when neither Claude nor Codex resolves.
+    let detected = await ensureConfigured().catch(() => null);
+    if (!detected) {
+      await configure(args);
+      const saved = await json(path.join(home, 'config.json'));
+      if (!saved.apiKey) {
+        if (process.env.NINE_ROUTER_API_KEY) saved.apiKey = process.env.NINE_ROUTER_API_KEY;
+        else {
+          if (!process.stdin.isTTY) throw new Error('No config detected. Use setup --url URL --key-stdin for noninteractive setup.');
+          process.stdout.write('9router API key (hidden): ');
+          const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
+          const rl = createInterface({ input: process.stdin, output: muted, terminal: true });
+          try { saved.apiKey = (await rl.question('')).trim(); } finally { rl.close(); process.stdout.write('\n'); }
+        }
+        if (!saved.apiKey) throw new Error('Empty key');
+        await save(path.join(home, 'config.json'), saved);
       }
-      if (!saved.apiKey) throw new Error('Empty key');
-      await save(path.join(home, 'config.json'), saved);
+      detected = await ensureConfigured();
     }
-    await config();
+    for (const { k, c } of detected) console.log('Detected ' + k + ' endpoint: ' + c.base);
     const result = await install({ home, entry });
     console.log('Setup complete: ' + result.kinds.join(', ') + '. Open a new terminal, then type claude or codex.');
     console.log('Codex HUD requires Windows Terminal on Windows, or tmux on macOS/Linux. Restart your terminal app; remove existing claude/codex aliases if they shadow the wrappers.');
@@ -249,7 +287,7 @@ async function main() {
       process.off('SIGINT', interrupt);
       return;
     }
-    const c = await config();
+    const c = await config(kind);
     return kind === 'claude' ? run(kind, randomUUID(), rest, c) : launchCodex(rest, c);
   }
   if (command === 'configure') return configure(args);
@@ -268,9 +306,9 @@ async function main() {
   }
   if (command === 'claude') {
     if (process.platform === 'win32') await protectWindowsHome(home);
-    return run('claude', randomUUID(), args, await config());
+    return run('claude', randomUUID(), args, await config('claude'));
   }
-  if (command === 'codex') return launchCodex(args, await config());
-  console.log('9router-hud setup --url https://router.example\n9router-hud install | uninstall\n9router-hud configure --url https://router.example [--key-stdin]\n9router-hud claude -- [Claude arguments]\n9router-hud codex -- [Codex arguments]\nRequires Node 20+; Codex needs Windows Terminal (Windows) or tmux (macOS/Linux). No model names are displayed.');
+  if (command === 'codex') return launchCodex(args, await config('codex'));
+  console.log('9router-hud setup   # auto-detects endpoint/key from Claude settings.json and Codex config.toml\n9router-hud install | uninstall\n9router-hud configure --url https://router.example [--key-stdin]   # optional manual fallback\n9router-hud claude -- [Claude arguments]\n9router-hud codex -- [Codex arguments]\nRequires Node 20+; Codex needs Windows Terminal (Windows) or tmux (macOS/Linux). No model names are displayed.');
 }
 main().catch(error => { console.error('9router-hud: ' + error.message); process.exitCode = 1; });

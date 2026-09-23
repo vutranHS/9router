@@ -15,10 +15,15 @@ test('Claude context uses cache tokens and transcript tools, without model names
     JSON.stringify({ message: { content: [{ type: 'tool_result', tool_use_id: '1' }] } }),
   ], 'claude');
   assert.deepEqual(tools, { count: 2, running: ['Bash'] });
-  const output = render({ context, tools, quota: { account: { label: 'a@example.com\n\x1b[31m' }, status: 'ok', five_hour: { used_percentage: 25 } } });
-  assert.match(output, /30% 60.0k\/200.0k/);
-  assert.match(output, /75% left/);
-  assert.ok(!output.includes('\x1b'));
+  const output = render({ context, tools, quota: { account: { label: 'a@example.com\n\x1b]0;pwn\x07' }, status: 'ok', five_hour: { used_percentage: 25 } } });
+  const shown = output.replace(/\x1b\[[0-9;]*m/g, '');       // drop the HUD's own SGR colors
+  assert.match(shown, /Context 30% 60.0k\/200.0k/);
+  assert.match(shown, /75% left/);
+  assert.match(shown, /Account a@example.com/);
+  // user-supplied label is clean()'d: its newline and OSC injection never survive
+  assert.equal(output.split('\n').length, 3);
+  assert.ok(!output.includes('\x1b]'));
+  assert.ok(!output.includes('pwn'));
   assert.ok(!output.includes('hidden'));
 });
 test('Codex uses last context usage, ignores cumulative tokens, tracks custom calls', () => {

@@ -53,7 +53,7 @@ for (const kind of ['claude', 'codex']) test(kind + ' launcher: proxy → router
     'if(kind==="codex"){const d=path.join(process.env.CODEX_HOME,"sessions","2026","09","23");fs.mkdirSync(d,{recursive:true});fs.writeFileSync(path.join(d,"rollout-time-"+thread+".jsonl"),JSON.stringify({type:"event_msg",payload:{type:"token_count",info:{last_token_usage:{total_tokens:50000},model_context_window:200000}}})+"\\n");}',
     'const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","session_id":thread},body:"{}"});await response.text();',
     'await new Promise(r=>setTimeout(r,2400));',
-    'if(kind==="claude"){const at=process.argv.indexOf("--settings");const settings=JSON.parse(process.argv[at+1]); const result=cp.spawnSync(settings.statusLine.command,{shell:true,encoding:"utf8",input:JSON.stringify({context_window:{used_percentage:25,context_window_size:200000,current_usage:{input_tokens:50000}}})});process.stdout.write(result.stdout);if(result.status)throw Error(result.stderr);}',
+    'if(kind==="claude"){const at=process.argv.indexOf("--settings");const settings=JSON.parse(fs.readFileSync(process.argv[at+1],"utf8"));if(settings.env.ANTHROPIC_BASE_URL!==process.env.ANTHROPIC_BASE_URL)throw Error("settings env must force proxy base URL");const result=cp.spawnSync(settings.statusLine.command,{shell:true,encoding:"utf8",input:JSON.stringify({context_window:{used_percentage:25,context_window_size:200000,current_usage:{input_tokens:50000}}})});process.stdout.write(result.stdout);if(result.status)throw Error(result.stderr);}',
     'else {const root=path.join(process.env.NINE_ROUTER_HUD_HOME,"sessions");const id=fs.readdirSync(root)[0];const s=JSON.parse(fs.readFileSync(path.join(root,id,"state.json")));console.log(JSON.stringify(s));}',
     '})().catch(e=>{console.error(e.message);process.exitCode=1;});',
   ].join('\n');
@@ -76,9 +76,10 @@ for (const kind of ['claude', 'codex']) test(kind + ' launcher: proxy → router
     }
     const result = await execute(args, env);
     assert.equal(result.code, 0, result.err);
-    assert.match(result.out, /account@example.com/);
-    assert.match(result.out, kind === 'claude' ? /5h 80% left/ : /"used_percentage":20/);
-    assert.match(result.out, kind === 'claude' ? /Context 25%/ : /"percent":25/);
+    const shown = result.out.replace(/\x1b\[[0-9;]*m/g, '');   // strip HUD status-line colors
+    assert.match(shown, /account@example.com/);
+    assert.match(shown, kind === 'claude' ? /5h 80% left/ : /"used_percentage":20/);
+    assert.match(shown, kind === 'claude' ? /Context 25%/ : /"percent":25/);
     assert.ok(!result.out.includes('test-key'));
     assert.equal(sessions.size, 1);
     assert.deepEqual(await readdir(path.join(home, 'sessions')), []);

@@ -59,4 +59,15 @@ test('Codex windows respect upstream duration and model quota family', () => {
   assert.equal(normalizeQuota({ quotas: { session: { ...primary, windowSeconds: 3600 } } }).five_hour, null);
   assert.equal(normalizeQuota({ quotas: { spark_session: { ...primary, windowSeconds: 18000 }, session: primary } }, 'spark').five_hour.used_percentage, 25);
   assert.equal(normalizeQuota({ quotas: {} }).seven_day, null);
+  // Codex may omit limit_window_seconds; map by role (primary=5h, secondary=7d)
+  // instead of dropping both windows — otherwise the HUD shows "5h -- | 7d --".
+  const noDuration = normalizeQuota({ quotas: {
+    session: { used: 10, total: 100 }, weekly: { used: 30, total: 100 },
+  } });
+  assert.equal(noDuration.five_hour.used_percentage, 10);
+  assert.equal(noDuration.seven_day.used_percentage, 30);
+  // A lone primary with no duration is still the 5h window; no weekly means 7d stays null.
+  const loneNoDuration = normalizeQuota({ quotas: { session: { used: 10, total: 100 } } });
+  assert.equal(loneNoDuration.five_hour.used_percentage, 10);
+  assert.equal(loneNoDuration.seven_day, null);
 });
