@@ -1,3 +1,8 @@
+# v0.5.90 (2026-09-23)
+
+## Features
+- **HUD** (v0.1.2): skip wrapping a CLI that has no 9router endpoint. `setup`/`install` now only install the wrapper for CLIs whose router endpoint + key resolve (from env, the CLI's own config, or `config.json`), and report the ones left untouched — so a Claude Code or Codex on direct subscription auth keeps launching normally. As a safety net, an already-installed wrapper also fails open at runtime: if the CLI no longer resolves a 9router endpoint, `auto` execs the real binary instead of erroring
+
 # v0.5.89 (2026-09-23)
 
 ## Fixes
