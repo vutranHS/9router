@@ -7,6 +7,7 @@
 - **HUD** (v0.1.1): auto-detect the router endpoint and API key from the CLI's own config at setup, so a separate `9router-hud configure` step is no longer required. Claude is read from `~/.claude/settings.json` (`env.ANTHROPIC_BASE_URL` / `env.ANTHROPIC_AUTH_TOKEN`); Codex from `~/.codex/config.toml` (`model_providers.<provider>.base_url` and the OS env var named by that provider's `env_key`). Endpoint and key resolve independently: explicit env → detected → saved `config.json`
 - **HUD**: force the proxy at highest precedence for Claude by writing a 0600 `--settings` file in the session dir, so a stale `ANTHROPIC_BASE_URL` left in `settings.json` can no longer bypass the HUD proxy. The token stays out of child argv and the file is removed on exit
 - **HUD**: redesigned the status line / Codex pane with color — labelled sections, a context-usage bar, and green/amber/red thresholds on context and 5h/7d quota. User-supplied strings (account label, tool names) are still sanitized so they can't inject escapes, and `NO_COLOR` (or `TERM=dumb`) falls back to plain output
+- **Dashboard**: the CLI Tools "9Router HUD" card now shows the auto-detect setup command (`9router-hud setup`, no `--url`/key prompt) with the router endpoint as an optional override, matching HUD v0.1.1
 
 # v0.5.88 (2026-09-23)
 
