@@ -23,20 +23,32 @@ jobs:
         with:
           node-version: 22
 
-      - name: Verify tag matches package version
+      # Coexists with release-app.yml (also on "v*"): each release workflow
+      # only proceeds for the tag that matches ITS package version, and
+      # green-skips every other tag instead of failing the run.
+      - name: Match tag to CLI version
+        id: match
         run: |
           VERSION=$(node -p "require('./cli/package.json').version")
-          test "${GITHUB_REF_NAME}" = "v${VERSION}"
+          if [ "${GITHUB_REF_NAME}" = "v${VERSION}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Tag ${GITHUB_REF_NAME} does not match CLI version v${VERSION}; skipping CLI release."
+          fi
 
       - name: Install dependencies
+        if: steps.match.outputs.ok == 'true'
         run: |
           npm install --no-audit --no-fund
           npm --prefix cli install --ignore-scripts --no-audit --no-fund
 
       - name: Build CLI package
+        if: steps.match.outputs.ok == 'true'
         run: npm run cli:pack
 
       - name: Verify package
+        if: steps.match.outputs.ok == 'true'
         run: |
           VERSION=$(node -p "require('./cli/package.json').version")
           PACKAGE="9router-${VERSION}.tgz"
@@ -48,13 +60,15 @@ jobs:
           sha256sum "${PACKAGE}" > "${PACKAGE}.sha256"
 
       - uses: actions/upload-artifact@v4
+        if: steps.match.outputs.ok == 'true'
         with:
-          name: 9router-${{ github.ref_name }}
+          name: 9router-cli-${{ github.ref_name }}
           path: |
             9router-*.tgz
             9router-*.tgz.sha256
 
       - name: Create GitHub release
+        if: steps.match.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
