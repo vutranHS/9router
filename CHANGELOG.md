@@ -1,3 +1,11 @@
+# v0.5.87 (2026-09-23)
+
+## Features
+- **Models & pricing**: add Claude Opus 5.5 and the latest GPT-5.5, GPT-5.6 and GPT-6 families, including Fast mode billing and the OpenAI long-context tier above 272K input tokens
+
+## Fixes
+- **Responses API**: include usage in `response.completed` so Codex clients can track context and auto-compact long sessions
+
 # v0.5.86 (2026-09-21)
 
 ## Features
