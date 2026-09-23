@@ -11,6 +11,10 @@
  */
 export const MODEL_PRICING = {
   // === Anthropic / Claude ===
+  "claude-opus-5-5-fast":         { input: 8.00,  output: 40.00, cached: 0.40,  reasoning: 40.00,  cache_creation: 10.00 },
+  "claude-opus-5-5":              { input: 4.00,  output: 20.00, cached: 0.20,  reasoning: 20.00,  cache_creation: 5.00  },
+  "claude-opus-5-fast":           { input: 10.00, output: 50.00, cached: 1.00,  reasoning: 50.00,  cache_creation: 12.50 },
+  "claude-opus-4-8-fast":         { input: 10.00, output: 50.00, cached: 1.00,  reasoning: 50.00,  cache_creation: 12.50 },
   "claude-opus-4-6":              { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
   "claude-opus-4-5-20251101":     { input: 5.00,  output: 25.00, cached: 0.50,  reasoning: 25.00,  cache_creation: 6.25  },
   "claude-sonnet-4-6":            { input: 3.00,  output: 15.00, cached: 0.30,  reasoning: 15.00,  cache_creation: 3.75  },
@@ -51,12 +55,22 @@ export const MODEL_PRICING = {
   "gpt-5.2-codex":                { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  },
   "gpt-5.3-codex":                { input: 1.75,  output: 14.00, cached: 0.175, reasoning: 14.00,  cache_creation: 1.75  },
   "gpt-5.3-codex-spark":         { input: 3.00,  output: 12.00, cached: 0.30,  reasoning: 12.00,  cache_creation: 3.00  },
+  "gpt-5.5":                      { input: 5.00,  output: 30.00, cached: 0.50,  reasoning: 30.00,  long_context: { input: 10.00, output: 45.00, cached: 1.00, reasoning: 45.00 } },
+  "gpt-5.5-fast":                 { input: 12.50, output: 75.00, cached: 1.25,  reasoning: 75.00 },
   "gpt-5.6":                      { input: 2.50,  output: 15.00, cached: 0.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-5.6-luna":                 { input: 1.00,  output: 6.00,  cached: 0.10,  reasoning: 6.00,   cache_creation: 1.00  },
-  "gpt-5.6-terra":                { input: 2.50,  output: 15.00, cached: 0.25,  reasoning: 15.00,  cache_creation: 2.50  },
-  "gpt-5.6-sol":                  { input: 5.00,  output: 30.00, cached: 0.50,  reasoning: 30.00,  cache_creation: 5.00  },
-  // Standard short-context rates: https://developers.openai.com/api/docs/pricing (2026-09-21).
-  "gpt-6-astra":                  { input: 10.00, output: 50.00, cached: 1.00,  reasoning: 50.00,  cache_creation: 12.50 },
+  "gpt-5.6-sol":                  { input: 4.00,  output: 20.00, cached: 0.40,  reasoning: 20.00,  cache_creation: 5.00, long_context: { input: 8.00, output: 30.00, cached: 0.80, reasoning: 30.00, cache_creation: 10.00 } },
+  "gpt-5.6-sol-fast":             { input: 8.00,  output: 40.00, cached: 0.80,  reasoning: 40.00,  cache_creation: 10.00, long_context: { input: 16.00, output: 60.00, cached: 1.60, reasoning: 60.00, cache_creation: 20.00 } },
+  "gpt-5.6-terra":                { input: 2.00,  output: 12.00, cached: 0.20,  reasoning: 12.00,  cache_creation: 2.50, long_context: { input: 4.00, output: 18.00, cached: 0.40, reasoning: 18.00, cache_creation: 5.00 } },
+  "gpt-5.6-terra-fast":           { input: 4.00,  output: 24.00, cached: 0.40,  reasoning: 24.00,  cache_creation: 5.00, long_context: { input: 8.00, output: 36.00, cached: 0.80, reasoning: 36.00, cache_creation: 10.00 } },
+  "gpt-5.6-luna":                 { input: 0.20,  output: 1.20,  cached: 0.02,  reasoning: 1.20,   cache_creation: 0.25, long_context: { input: 0.40, output: 1.80, cached: 0.04, reasoning: 1.80, cache_creation: 0.50 } },
+  "gpt-5.6-luna-fast":            { input: 0.40,  output: 2.40,  cached: 0.04,  reasoning: 2.40,   cache_creation: 0.50, long_context: { input: 0.80, output: 3.60, cached: 0.08, reasoning: 3.60, cache_creation: 1.00 } },
+  // Standard/Fast short and long-context rates: https://developers.openai.com/api/docs/pricing (2026-09-23).
+  "gpt-6-astra":                  { input: 10.00, output: 50.00, cached: 1.00,  reasoning: 50.00,  cache_creation: 12.50, long_context: { input: 20.00, output: 75.00, cached: 2.00, reasoning: 75.00, cache_creation: 25.00 } },
+  "gpt-6-astra-fast":             { input: 20.00, output: 100.00, cached: 2.00, reasoning: 100.00, cache_creation: 25.00, long_context: { input: 40.00, output: 150.00, cached: 4.00, reasoning: 150.00, cache_creation: 50.00 } },
+  "gpt-6-sol":                    { input: 2.00,  output: 10.00, cached: 0.20,  reasoning: 10.00,  cache_creation: 2.50, long_context: { input: 4.00, output: 15.00, cached: 0.40, reasoning: 15.00, cache_creation: 5.00 } },
+  "gpt-6-sol-fast":               { input: 4.00,  output: 20.00, cached: 0.40,  reasoning: 20.00,  cache_creation: 5.00, long_context: { input: 8.00, output: 30.00, cached: 0.80, reasoning: 30.00, cache_creation: 10.00 } },
+  "gpt-6-luna":                   { input: 0.10,  output: 0.50,  cached: 0.01,  reasoning: 0.50,   cache_creation: 0.125, long_context: { input: 0.20, output: 0.75, cached: 0.02, reasoning: 0.75, cache_creation: 0.25 } },
+  "gpt-6-luna-fast":              { input: 0.20,  output: 1.00,  cached: 0.02,  reasoning: 1.00,   cache_creation: 0.25, long_context: { input: 0.40, output: 1.50, cached: 0.04, reasoning: 1.50, cache_creation: 0.50 } },
   "o1":                           { input: 15.00, output: 60.00, cached: 7.50,  reasoning: 90.00,  cache_creation: 15.00 },
   "o1-mini":                      { input: 3.00,  output: 12.00, cached: 1.50,  reasoning: 18.00,  cache_creation: 3.00  },
 
@@ -428,16 +442,17 @@ export function calculateCostFromTokens(tokens, pricing) {
   let cost = 0;
 
   const inputTokens = tokens.prompt_tokens || tokens.input_tokens || 0;
+  const rates = inputTokens > 272000 && pricing.long_context ? pricing.long_context : pricing;
   const cachedTokens = tokens.cached_tokens || tokens.cache_read_input_tokens || 0;
   const cacheCreationTokens = tokens.cache_creation_input_tokens || 0;
   // prompt_tokens is cache-inclusive (see canonicalizeUsage): cached + cache_creation
   // are subsets, so subtract both to avoid charging them at the full input rate.
   const nonCachedInput = Math.max(0, inputTokens - cachedTokens - cacheCreationTokens);
 
-  cost += nonCachedInput * (pricing.input / 1000000);
+  cost += nonCachedInput * (rates.input / 1000000);
 
   if (cachedTokens > 0) {
-    cost += cachedTokens * ((pricing.cached || pricing.input) / 1000000);
+    cost += cachedTokens * ((rates.cached || rates.input) / 1000000);
   }
 
   const outputTokens = tokens.completion_tokens || tokens.output_tokens || 0;
@@ -447,14 +462,14 @@ export function calculateCostFromTokens(tokens, pricing) {
   // rate. Adding it on top double-charged every reasoning model. Clamp so a
   // producer that reports an over-large count can never drive output negative.
   const reasoningTokens = Math.min(tokens.reasoning_tokens || 0, outputTokens);
-  cost += (outputTokens - reasoningTokens) * (pricing.output / 1000000);
+  cost += (outputTokens - reasoningTokens) * (rates.output / 1000000);
 
   if (reasoningTokens > 0) {
-    cost += reasoningTokens * ((pricing.reasoning || pricing.output) / 1000000);
+    cost += reasoningTokens * ((rates.reasoning || rates.output) / 1000000);
   }
 
   if (cacheCreationTokens > 0) {
-    cost += cacheCreationTokens * ((pricing.cache_creation || pricing.input) / 1000000);
+    cost += cacheCreationTokens * ((rates.cache_creation || rates.input) / 1000000);
   }
 
   return cost;

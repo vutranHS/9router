@@ -139,11 +139,21 @@ const KIRO_GPT_5_6_CAPABILITIES = { vision: true, reasoning: true, search: true,
 // (lower than OpenAI API's 1.05M). Sol differs from Terra/Luna. #2720
 const CODEX_GPT_56_SOL_CAPS  = { vision: true, reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 372000, maxOutput: 128000 };
 const CODEX_GPT_56_DEFAULT_CAPS = { vision: true, reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 272000, maxOutput: 128000 };
+const OPENAI_DAYBREAK_CAPS = { vision: true, reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 1050000, maxOutput: 128000 };
 
 /**
  * Provider-specific capability overrides. Keyed by provider alias/id.
  */
 export const PROVIDER_CAPABILITIES = {
+  "openai": {
+    "gpt-6-astra": OPENAI_DAYBREAK_CAPS,
+    "gpt-6-sol": OPENAI_DAYBREAK_CAPS,
+    "gpt-6-luna": OPENAI_DAYBREAK_CAPS,
+    "gpt-5.6-sol": OPENAI_DAYBREAK_CAPS,
+    "gpt-5.6-terra": OPENAI_DAYBREAK_CAPS,
+    "gpt-5.6-luna": OPENAI_DAYBREAK_CAPS,
+    "gpt-5.5": OPENAI_DAYBREAK_CAPS,
+  },
   // NVIDIA NIM is OpenAI-compatible → rejects MiniMax/GLM native `thinking` field.
   // Force openai reasoning_effort format for its reasoning models. #issue
   "nvidia": {

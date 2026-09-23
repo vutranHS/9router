@@ -8,7 +8,7 @@ describe("Astra and Fable Standard short-context prices", () => {
     ["claude-fable-5-1", 0.25],
   ])("uses the verified rates for %s", (model, cached) => {
     const pricing = getPricingForModel(null, model);
-    expect(pricing).toEqual({ input: 10, output: 50, cached, reasoning: 50, cache_creation: 12.5 });
+    expect(pricing).toMatchObject({ input: 10, output: 50, cached, reasoning: 50, cache_creation: 12.5 });
     // Canonical prompt count includes both cache reads and cache writes.
     expect(calculateCostFromTokens({ prompt_tokens: 1000, cached_tokens: 300,
       cache_creation_input_tokens: 200, completion_tokens: 100 }, pricing))

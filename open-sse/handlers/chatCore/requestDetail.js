@@ -8,7 +8,8 @@ const OPTIONAL_PARAMS = [
   "thinking", "reasoning", "enable_thinking",
   "presence_penalty", "frequency_penalty",
   "seed", "stop", "tools", "tool_choice",
-  "response_format", "prediction", "store", "metadata",
+  "response_format", "prediction", "store", "metadata", "service_tier",
+  "speed",
   "n", "logprobs", "top_logprobs", "logit_bias",
   "user", "parallel_tool_calls"
 ];
@@ -102,7 +103,7 @@ export function formatDoneLine({ usage, latency }) {
   return `DONE ${latency?.total ?? 0}ms${ttftStr} · ${inStr} · OUT ${outTok}`;
 }
 
-export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, label = "USAGE", silent = false }) {
+export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, requestBody, label = "USAGE", silent = false }) {
   if (!tokens || typeof tokens !== "object") return;
 
   const inTokens = tokens.input_tokens ?? tokens.prompt_tokens ?? 0;
@@ -122,10 +123,14 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
     prompt_tokens: tokens.prompt_tokens ?? tokens.input_tokens ?? 0,
     completion_tokens: tokens.completion_tokens ?? tokens.output_tokens ?? 0
   };
+  const usageModel = model || "unknown";
+  const fastPricing = (provider === "claude" && requestBody?.speed === "fast")
+    || (provider === "openai" && ["fast", "priority"].includes(requestBody?.service_tier));
 
   saveRequestUsage({
     provider: provider || "unknown",
-    model: model || "unknown",
+    model: usageModel,
+    pricingModel: fastPricing ? `${usageModel}-fast` : usageModel,
     tokens: normalized,
     timestamp: new Date().toISOString(),
     connectionId: connectionId || undefined,
