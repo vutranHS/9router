@@ -23,20 +23,34 @@ jobs:
         with:
           node-version: 22
 
-      - name: Verify tag matches package version
+      # Coexists with release-app.yml (also on "v*"). This workflow builds ONLY
+      # for a CLI-only tag: the tag matches the CLI version AND differs from the
+      # app version. When both versions match the tag, release-app.yml owns the
+      # release (it builds app + HUD + CLI together), so this one green-skips.
+      - name: Match tag to CLI version
+        id: match
         run: |
           VERSION=$(node -p "require('./cli/package.json').version")
-          test "${GITHUB_REF_NAME}" = "v${VERSION}"
+          APP_VERSION=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_NAME}" = "v${VERSION}" ] && [ "${GITHUB_REF_NAME}" != "v${APP_VERSION}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Tag ${GITHUB_REF_NAME}: not a CLI-only release (cli v${VERSION}, app v${APP_VERSION}); release-app.yml handles matching app tags. Skipping."
+          fi
 
       - name: Install dependencies
+        if: steps.match.outputs.ok == 'true'
         run: |
           npm install --no-audit --no-fund
           npm --prefix cli install --ignore-scripts --no-audit --no-fund
 
       - name: Build CLI package
+        if: steps.match.outputs.ok == 'true'
         run: npm run cli:pack
 
       - name: Verify package
+        if: steps.match.outputs.ok == 'true'
         run: |
           VERSION=$(node -p "require('./cli/package.json').version")
           PACKAGE="9router-${VERSION}.tgz"
@@ -48,13 +62,15 @@ jobs:
           sha256sum "${PACKAGE}" > "${PACKAGE}.sha256"
 
       - uses: actions/upload-artifact@v4
+        if: steps.match.outputs.ok == 'true'
         with:
-          name: 9router-${{ github.ref_name }}
+          name: 9router-cli-${{ github.ref_name }}
           path: |
             9router-*.tgz
             9router-*.tgz.sha256
 
       - name: Create GitHub release
+        if: steps.match.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

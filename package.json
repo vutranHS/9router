@@ -1,17 +1,17 @@
 {
   "name": "9router-app",
-  "version": "0.5.87",
+  "version": "0.5.89",
   "description": "9Router web dashboard",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 20127",
-    "dev:webpack": "next dev --webpack --port 20127",
-    "build": "next build --webpack",
+    "dev": "node scripts/build-hud-package.mjs && next dev --port 20127",
+    "dev:webpack": "node scripts/build-hud-package.mjs && next dev --webpack --port 20127",
+    "build": "node scripts/build-hud-package.mjs && next build --webpack",
     "postbuild": "node scripts/copy-standalone-assets.mjs",
     "postbuild:bun": "node scripts/copy-standalone-assets.mjs",
     "start": "node custom-server.js --port 20127",
-    "dev:bun": "bun --bun next dev --webpack --port 20127",
-    "build:bun": "bun --bun next build --webpack",
+    "dev:bun": "node scripts/build-hud-package.mjs && bun --bun next dev --webpack --port 20127",
+    "build:bun": "node scripts/build-hud-package.mjs && bun --bun next build --webpack",
     "start:bun": "bun ./.next/standalone/custom-server.js",
     "cli:pack": "npm --prefix cli run pack:cli",
     "cli:publish": "npm --prefix cli run publish:cli"
@@ -54,7 +54,7 @@
   "optionalDependencies": {
     "better-sqlite3": "^12.6.2"
   },
-  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools — sql.js is used as fallback at runtime",
+  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools \u2014 sql.js is used as fallback at runtime",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "eslint": "^9",

@@ -89,7 +89,9 @@ graphify-out/*
 
 # Kiro local workspace state
 .kiro/
-9router-*
+# Local root-level artifacts (packed tgz, downloaded bundles); anchored so it
+# does not swallow the tracked packages/9router-hud/ source directory.
+/9router-*
 
 # Local sensitive / temp files
 .engine-token.txt

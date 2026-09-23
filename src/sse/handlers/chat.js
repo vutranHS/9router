@@ -1,4 +1,5 @@
 import "open-sse/index.js";
+import { recordHudSession } from "@/lib/hud/session.js";
 
 import {
   getProviderCredentials,
@@ -307,7 +308,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       }
     });
 
-    if (result.success) return result.response;
+    if (result.success) {
+      // Record the actual successful account after remapping and account fallback.
+      await recordHudSession(request, apiKey, credentials.connectionId, model);
+      return result.response;
+    }
 
     // Antigravity 409/429: refresh live quota to get exact resetAt before locking
     let quotaResetMs = null;

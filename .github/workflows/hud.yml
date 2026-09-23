@@ -1,0 +1,35 @@
+name: HUD
+on:
+  pull_request:
+    paths:
+      - 'packages/9router-hud/**'
+      - 'src/lib/hud/**'
+      - 'src/app/api/v1/hud/**'
+      - 'src/sse/handlers/chat.js'
+      - 'open-sse/services/model.js'
+      - 'src/sse/services/model.js'
+      - 'tests/hud/**'
+      - 'scripts/build-hud-package.mjs'
+      - 'package.json'
+      - 'src/app/(dashboard)/dashboard/cli-tools/**'
+      - '.github/workflows/hud.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/hud/*.test.mjs packages/9router-hud/test/*.test.mjs
+        shell: bash
+      - run: npm pack --dry-run
+        working-directory: packages/9router-hud
+      - run: node scripts/build-hud-package.mjs

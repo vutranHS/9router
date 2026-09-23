@@ -275,6 +275,15 @@ function buildCliPackage() {
   const publicDest = path.join(cliAppDir, "public");
   if (fs.existsSync(publicSrc)) {
     copyRecursive(publicSrc, publicDest);
+    // public/downloads/ ships a .gitignore (dropping the generated
+    // 9router-hud.tgz from git). npm pack honors that nested .gitignore and
+    // would exclude the HUD tarball from the bundle, 404ing the dashboard's
+    // /downloads/9router-hud.tgz link. Strip it so the tarball ships.
+    const bundledDownloadsIgnore = path.join(publicDest, "downloads", ".gitignore");
+    if (fs.existsSync(bundledDownloadsIgnore)) {
+      fs.rmSync(bundledDownloadsIgnore);
+      console.log("✅ Stripped public/downloads/.gitignore so HUD tarball ships");
+    }
     console.log("✅ Copied public folder\n");
   } else {
     console.log("⏭️  No public folder found\n");
