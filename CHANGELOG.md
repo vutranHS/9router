@@ -1,3 +1,11 @@
+# v0.5.88 (2026-09-23)
+
+## Features
+- **HUD**: add an installable dependency-free `9router-hud` companion (v0.1.0) for Claude Code and Codex CLI — a native Claude status line and a Codex pane (Windows Terminal on Windows, tmux on macOS/Linux) showing context, account label, remaining 5h/7d quota with reset times, and recent tool activity. No model display. Streams CLI inference through a loopback proxy that injects a random launch-session header; the dashboard CLI Tools page gains a Download HUD card, and the archive is bundled into every server build path
+- **HUD quota API**: add authenticated `GET /v1/hud/quota`, bound to key + launch session and the actual post-remap/fallback connection that served the request. Bindings persist for 24h under `DATA_DIR/hud-sessions`; the endpoint never exposes arbitrary connection lookup, credentials, model IDs or upstream errors
+- **Routing**: bare `claude-*` now defaults to `claude`/cc and `gpt-*` to `codex`/cx (subscription connections) instead of the API-key providers. Explicit `anthropic/…` / `openai/…` prefixes, aliases, combos and per-key remapping still win; the model must still be supported by the upstream account
+- **CI**: add a Windows/macOS/Linux `HUD` workflow (`node --test`, `npm pack --dry-run`, HUD tgz build)
+
 # v0.5.87 (2026-09-23)
 
 ## Features

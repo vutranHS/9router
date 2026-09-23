@@ -1,0 +1,10 @@
+{
+  "name": "9router-hud",
+  "version": "0.1.0",
+  "description": "Session-scoped context, account, quota and tool HUD for Claude Code and Codex CLI",
+  "type": "module",
+  "bin": { "9router-hud": "./src/cli.mjs" },
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test test/*.test.mjs" },
+  "files": ["src", "README.md"]
+}
