@@ -232,9 +232,12 @@ async function main() {
   const [command, ...raw] = process.argv.slice(2);
   const args = raw[0] === '--' ? raw.slice(1) : raw;
   if (command === 'install') {
-    await ensureConfigured();
-    const result = await install({ home, entry });
+    const configured = await ensureConfigured();
+    const only = configured.map(d => d.k);
+    const result = await install({ home, entry, only });
     console.log('Installed wrappers: ' + result.kinds.join(', ') + '. Open a new terminal, then type claude or codex.');
+    const skipped = ['claude', 'codex'].filter(k => !only.includes(k));
+    if (skipped.length) console.log('Left untouched (no 9router endpoint configured — using direct/subscription auth): ' + skipped.join(', ') + '.');
     console.log('Shell configuration: ' + result.rc + '. Existing shell aliases/functions must be removed manually if they shadow these commands.');
     return;
   }
@@ -266,15 +269,26 @@ async function main() {
       detected = await ensureConfigured();
     }
     for (const { k, c } of detected) console.log('Detected ' + k + ' endpoint: ' + c.base);
-    const result = await install({ home, entry });
+    const only = detected.map(({ k }) => k);
+    const result = await install({ home, entry, only });
     console.log('Setup complete: ' + result.kinds.join(', ') + '. Open a new terminal, then type claude or codex.');
+    const skipped = ['claude', 'codex'].filter(k => !only.includes(k));
+    if (skipped.length) console.log('Left untouched (no 9router endpoint configured — using direct/subscription auth): ' + skipped.join(', ') + '.');
     console.log('Codex HUD requires Windows Terminal on Windows, or tmux on macOS/Linux. Restart your terminal app; remove existing claude/codex aliases if they shadow the wrappers.');
     return;
   }
   if (command === 'auto') {
     const [kind, ...rest] = args;
     if (!['claude', 'codex'].includes(kind)) throw new Error('Unknown CLI');
-    if (shouldBypass(kind, rest, process.stdin.isTTY && process.stdout.isTTY)) {
+    // Fail open: run the real CLI untouched when the HUD is explicitly disabled,
+    // for non-interactive/version/help invocations, OR when this CLI has no
+    // 9router endpoint (e.g. Claude Code on direct subscription auth). A wrapper
+    // left on PATH must never block a CLI that routes without 9router.
+    let c = null;
+    if (!shouldBypass(kind, rest, process.stdin.isTTY && process.stdout.isTTY)) {
+      c = await config(kind).catch(() => null);
+    }
+    if (!c) {
       const binary = await findBinary(kind, home);
       const invocation = process.platform === 'win32' ? await windowsInvocation(binary, kind, rest) : { command: binary, args: rest };
       const child = spawn(invocation.command, invocation.args, { stdio: 'inherit' });
@@ -287,7 +301,6 @@ async function main() {
       process.off('SIGINT', interrupt);
       return;
     }
-    const c = await config(kind);
     return kind === 'claude' ? run(kind, randomUUID(), rest, c) : launchCodex(rest, c);
   }
   if (command === 'configure') return configure(args);

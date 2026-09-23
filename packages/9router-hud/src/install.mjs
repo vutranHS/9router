@@ -47,10 +47,14 @@ function stripBlock(text) {
   if (finish < 0) throw new Error('Incomplete 9router-hud shell block; repair it before installing.');
   return text.slice(0, start) + text.slice(finish + end.length).replace(/^\n/, '');
 }
-export async function install({ home, entry, shell = process.env.SHELL, userHome = os.homedir(), zdotdir = process.env.ZDOTDIR, env = process.env }) {
+export async function install({ home, entry, only, shell = process.env.SHELL, userHome = os.homedir(), zdotdir = process.env.ZDOTDIR, env = process.env }) {
+  // `only` limits wrapping to the CLIs that actually route through a 9router
+  // endpoint. A CLI using direct/subscription auth (no custom endpoint) is left
+  // alone so it keeps launching normally. Absent → wrap whatever is installed.
+  const allow = Array.isArray(only) && only.length ? ['claude', 'codex'].filter(k => only.includes(k)) : ['claude', 'codex'];
   if (process.platform === 'win32') {
     const kinds = [];
-    for (const kind of ['claude', 'codex']) {
+    for (const kind of allow) {
       try { await findBinary(kind, home, env); kinds.push(kind); } catch (e) { if (!e.message.startsWith('Cannot find original')) throw e; }
     }
     if (!kinds.length) throw new Error('Install Claude Code or Codex CLI first.');
@@ -70,7 +74,7 @@ export async function install({ home, entry, shell = process.env.SHELL, userHome
   }
   const originals = await Promise.all(rcs.map(async file => stripBlock(await read(file))));
   const kinds = [];
-  for (const kind of ['claude', 'codex']) {
+  for (const kind of allow) {
     try { await findBinary(kind, home, env); kinds.push(kind); } catch (e) { if (!e.message.startsWith('Cannot find original')) throw e; }
   }
   if (!kinds.length) throw new Error('Install Claude Code or Codex CLI first.');
