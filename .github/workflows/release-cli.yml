@@ -23,18 +23,20 @@ jobs:
         with:
           node-version: 22
 
-      # Coexists with release-app.yml (also on "v*"): each release workflow
-      # only proceeds for the tag that matches ITS package version, and
-      # green-skips every other tag instead of failing the run.
+      # Coexists with release-app.yml (also on "v*"). This workflow builds ONLY
+      # for a CLI-only tag: the tag matches the CLI version AND differs from the
+      # app version. When both versions match the tag, release-app.yml owns the
+      # release (it builds app + HUD + CLI together), so this one green-skips.
       - name: Match tag to CLI version
         id: match
         run: |
           VERSION=$(node -p "require('./cli/package.json').version")
-          if [ "${GITHUB_REF_NAME}" = "v${VERSION}" ]; then
+          APP_VERSION=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_NAME}" = "v${VERSION}" ] && [ "${GITHUB_REF_NAME}" != "v${APP_VERSION}" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Tag ${GITHUB_REF_NAME} does not match CLI version v${VERSION}; skipping CLI release."
+            echo "::notice::Tag ${GITHUB_REF_NAME}: not a CLI-only release (cli v${VERSION}, app v${APP_VERSION}); release-app.yml handles matching app tags. Skipping."
           fi
 
       - name: Install dependencies

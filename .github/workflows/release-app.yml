@@ -23,9 +23,10 @@ jobs:
         with:
           node-version: 22
 
-      # Coexists with release-cli.yml (also on "v*"): each release workflow
-      # only proceeds for the tag that matches ITS package version, and
-      # green-skips every other tag instead of failing the run.
+      # Coexists with release-cli.yml (also on "v*"): this workflow owns any
+      # tag that matches the app version and builds app + HUD + CLI together.
+      # release-cli.yml only runs for a CLI-only tag (cli version != app version)
+      # so the two never build the same tag twice.
       - name: Match tag to app version
         id: match
         run: |
@@ -35,12 +36,14 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Tag ${GITHUB_REF_NAME} does not match app version v${VERSION}; skipping app+HUD release."
+            echo "::notice::Tag ${GITHUB_REF_NAME} does not match app version v${VERSION}; skipping app+HUD+CLI release."
           fi
 
       - name: Install dependencies
         if: steps.match.outputs.ok == 'true'
-        run: npm install --no-audit --no-fund
+        run: |
+          npm install --no-audit --no-fund
+          npm --prefix cli install --ignore-scripts --no-audit --no-fund
 
       - name: Build HUD download bundle
         if: steps.match.outputs.ok == 'true'
@@ -51,24 +54,36 @@ jobs:
         working-directory: packages/9router-hud
         run: npm pack --ignore-scripts --pack-destination "${GITHUB_WORKSPACE}"
 
-      - name: Pack app tarball
+      - name: Pack app tarball (source)
         if: steps.match.outputs.ok == 'true'
         run: npm pack --ignore-scripts --pack-destination "${GITHUB_WORKSPACE}"
+
+      # Builds the app (into .next-cli-build) and bundles it inside the CLI
+      # launcher, producing 9router-<cli version>.tgz at the repo root. This is
+      # the globally installable artifact: `npm install -g <this .tgz>`.
+      - name: Build CLI launcher package
+        if: steps.match.outputs.ok == 'true'
+        run: npm run cli:pack
 
       - name: Verify packages + checksums
         if: steps.match.outputs.ok == 'true'
         run: |
           VERSION="${{ steps.match.outputs.version }}"
           HUD_VERSION=$(node -p "require('./packages/9router-hud/package.json').version")
+          CLI_VERSION=$(node -p "require('./cli/package.json').version")
           APP_TGZ="9router-app-${VERSION}.tgz"
           HUD_TGZ="9router-hud-${HUD_VERSION}.tgz"
+          CLI_TGZ="9router-${CLI_VERSION}.tgz"
           test -f "${APP_TGZ}"
           test -f "${HUD_TGZ}"
+          test -f "${CLI_TGZ}"
           tar -xOf "${APP_TGZ}" package/package.json | grep -q '"name": "9router-app"'
           tar -xOf "${HUD_TGZ}" package/package.json | grep -q '"name": "9router-hud"'
-          sha256sum "${APP_TGZ}" > "${APP_TGZ}.sha256"
-          sha256sum "${HUD_TGZ}" > "${HUD_TGZ}.sha256"
-          cat "${APP_TGZ}.sha256" "${HUD_TGZ}.sha256"
+          tar -xOf "${CLI_TGZ}" package/package.json | grep -q '"9router": "./cli.js"'
+          for f in "${APP_TGZ}" "${HUD_TGZ}" "${CLI_TGZ}"; do
+            sha256sum "${f}" > "${f}.sha256"
+          done
+          cat ./*.tgz.sha256
 
       - name: Upload build artifacts
         if: steps.match.outputs.ok == 'true'
@@ -80,6 +95,8 @@ jobs:
             9router-app-*.tgz.sha256
             9router-hud-*.tgz
             9router-hud-*.tgz.sha256
+            9router-*.tgz
+            9router-*.tgz.sha256
 
       - name: Create GitHub release
         if: steps.match.outputs.ok == 'true'
@@ -88,15 +105,18 @@ jobs:
         run: |
           VERSION="${{ steps.match.outputs.version }}"
           HUD_VERSION=$(node -p "require('./packages/9router-hud/package.json').version")
+          CLI_VERSION=$(node -p "require('./cli/package.json').version")
           APP_TGZ="9router-app-${VERSION}.tgz"
           HUD_TGZ="9router-hud-${HUD_VERSION}.tgz"
+          CLI_TGZ="9router-${CLI_VERSION}.tgz"
+          FILES=(
+            "${CLI_TGZ}" "${CLI_TGZ}.sha256"
+            "${APP_TGZ}" "${APP_TGZ}.sha256"
+            "${HUD_TGZ}" "${HUD_TGZ}.sha256"
+          )
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" \
-              "${APP_TGZ}" "${APP_TGZ}.sha256" \
-              "${HUD_TGZ}" "${HUD_TGZ}.sha256" --clobber
+            gh release upload "${GITHUB_REF_NAME}" "${FILES[@]}" --clobber
           else
-            gh release create "${GITHUB_REF_NAME}" \
-              "${APP_TGZ}" "${APP_TGZ}.sha256" \
-              "${HUD_TGZ}" "${HUD_TGZ}.sha256" \
+            gh release create "${GITHUB_REF_NAME}" "${FILES[@]}" \
               --title "9Router ${VERSION}" --generate-notes
           fi
