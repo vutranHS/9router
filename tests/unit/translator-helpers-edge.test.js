@@ -25,7 +25,14 @@ describe("normalizeClaudePassthrough — haiku adaptive thinking (docs 11 §1)",
     },
   );
 
-  it.each(["summarized", "omitted", "updates"])("leaves the spec display %s untouched", (display) => {
+  // "updates" is a real API value but beta-gated behind a header we don't forward,
+  // so it 400s like any unknown mode — Claude Code >=2.1.285 sends it by default.
+  it.each(["highlights", "updates"])("coerces the rejected display %s to summarized", (display) => {
+    const out = normalizeClaudePassthrough({ thinking: { type: "adaptive", display } }, "claude-opus-5");
+    expect(out.thinking).toEqual({ type: "adaptive", display: "summarized" });
+  });
+
+  it.each(["summarized", "omitted"])("leaves the accepted display %s untouched", (display) => {
     const out = normalizeClaudePassthrough({ thinking: { type: "adaptive", display } }, "claude-opus-5");
     expect(out.thinking).toEqual({ type: "adaptive", display });
   });

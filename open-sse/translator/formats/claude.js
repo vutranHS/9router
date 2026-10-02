@@ -189,8 +189,11 @@ function buildThinkingPlaceholder(provider) {
 // turn carries a poisoned id.
 const CLAUDE_SERVER_TOOL_USE_ID = /^srvtoolu_[a-zA-Z0-9_]+$/;
 
-// thinking.display values the Anthropic Messages API accepts ("updates" is beta-gated).
-const CLAUDE_THINKING_DISPLAY = new Set(["summarized", "omitted", "updates"]);
+// thinking.display values the Anthropic OAuth endpoint accepts. "updates" is
+// beta-gated (thinking-display-updates-2026-08-18) and 400s without the header,
+// which we don't forward — so it is NOT in this set. Claude Code sends both
+// "highlights" (its own render mode) and "updates" depending on version/mode.
+const CLAUDE_THINKING_DISPLAY = new Set(["summarized", "omitted"]);
 
 function hasForeignServerToolUseId(block) {
   return block?.type === CLAUDE_BLOCK.SERVER_TOOL_USE
@@ -199,7 +202,7 @@ function hasForeignServerToolUseId(block) {
 
 // Normalize a native Claude passthrough body to match Anthropic Messages API spec.
 // Newer Cowork/Claude Code clients emit beta-only shapes that OAuth endpoints reject:
-// 0. thinking.display client render modes (e.g. "highlights") → off-spec, rejected
+// 0. thinking.display modes the endpoint rejects ("highlights", beta-gated "updates")
 // 1. thinking.type "adaptive" → unsupported on Haiku
 // 2. output_config.effort → unsupported on Haiku
 // 3. bare content-block objects (content: {block} instead of [{block}]) → wrapped first
@@ -208,13 +211,15 @@ function hasForeignServerToolUseId(block) {
 export function normalizeClaudePassthrough(body, model = "") {
   if (!body || typeof body !== "object") return body;
 
-  // 0. Coerce any client-only thinking.display mode to a spec value.
-  // Anthropic accepts only summarized/omitted/updates; Claude Code 2.1.277+ sends its
-  // own render mode ("highlights"), and the API 400s on anything off-spec. Allowlist
-  // rather than name known modes: clients keep inventing them, and a 400 here burns a
-  // 30s cooldown per account (unmatched status → checkFallbackError default), so one
-  // unknown mode can lock the whole pool. "summarized" keeps the user's intent to see
-  // reasoning — "omitted" would blank the thinking text they asked to display.
+  // 0. Coerce any thinking.display the endpoint won't accept to a spec value.
+  // The endpoint takes only summarized/omitted (see CLAUDE_THINKING_DISPLAY).
+  // Claude Code sends "highlights" (its own render mode) and, from ~2.1.285,
+  // "updates" — a real API value, but beta-gated behind a header we don't forward,
+  // so it 400s all the same. Allowlist rather than name known modes: clients keep
+  // inventing them, and an unmatched 400 falls through checkFallbackError to the
+  // default transient branch, burning a 30s cooldown per account and walking the
+  // fallback chain — one unknown mode can lock the whole pool. "summarized" keeps
+  // the user's intent to see reasoning; "omitted" would blank it.
   if (body.thinking?.display != null && !CLAUDE_THINKING_DISPLAY.has(body.thinking.display)) {
     // Copy-on-write: the caller's body is reused across account-fallback attempts.
     body.thinking = { ...body.thinking, display: "summarized" };

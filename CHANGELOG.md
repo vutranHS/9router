@@ -1,3 +1,8 @@
+# v0.5.96 (2026-10-02)
+
+## Fixes
+- **Claude passthrough**: drop `updates` from the accepted `thinking.display` set — v0.5.95 allowed it as a valid API value, but it is beta-gated behind `thinking-display-updates-2026-08-18`, a header 9router does not forward, so the endpoint still answered `400 thinking.adaptive.display: Input should be 'summarized', 'omitted'`. Claude Code >= ~2.1.285 sends `display: "updates"` by default whenever `thinking.type` is `adaptive`/`enabled`, so every request from a current CLI hit it. The accepted set is now exactly what the endpoint reports — `summarized` / `omitted` — and anything else (including `highlights` on older CLIs) is coerced to `summarized`
+
 # v0.5.95 (2026-10-02)
 
 ## Fixes
