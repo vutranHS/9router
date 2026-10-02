@@ -1,3 +1,9 @@
+# v0.5.95 (2026-10-02)
+
+## Fixes
+- **HUD** (v0.1.3): `uninstall` now removes the saved endpoint/API key (`config.json`) and session data, not just the wrappers and shell hooks. Leaving a plaintext API key behind after an explicit uninstall was wrong on its own, and the stale session dir could rebind a later install to a connection the user had already torn down. Windows and POSIX now share the teardown — previously the Windows path returned before the metadata cleanup
+- **Claude passthrough**: `thinking.display` is now validated against the values the Anthropic Messages API accepts (`summarized` / `omitted` / `updates`) instead of patching the client render modes we happen to know about. Claude Code 2.1.277+ sends its own `display: "highlights"`, which the API rejects with `400 thinking.adaptive.display: Input should be 'summarized', 'omitted'` whatever `thinking.type` says — so keying the normalization on `type` left `type: "disabled"` and type-less bodies still failing. An off-spec value is coerced to `summarized` (not `omitted`, which would blank the reasoning the user asked to see). This matters beyond the one 400: an unmatched status falls through `checkFallbackError` to the default transient branch, so every attempt burned a 30s cooldown on the account and walked the fallback chain — one unknown render mode could lock the whole pool and surface as a generic 503 with Claude Code retrying
+
 # v0.5.90 (2026-09-23)
 
 ## Features

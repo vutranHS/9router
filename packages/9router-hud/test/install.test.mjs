@@ -37,9 +37,14 @@ test('one-time wrappers preserve args, find updated CLI, install idempotently an
     await writeFile(path.join(original, 'claude'), '#!' + process.execPath + '\nconsole.log("updated");\n');
     const updated = spawnSync(path.join(first.bin, 'claude'), ['--version'], { env: wrappedEnv, encoding: 'utf8' });
     assert.equal(updated.stdout.trim(), 'updated');
+    await writeFile(path.join(home, 'config.json'), '{"apiKey":"secret"}');
+    await mkdir(path.join(home, 'sessions', 'old'), { recursive: true });
+    await writeFile(path.join(home, 'sessions', 'old', 'state.json'), '{}');
     await uninstall(home);
     assert.equal(await readFile(rc, 'utf8'), '# custom settings\nexport MY_SETTING=keep\n');
     await assert.rejects(readFile(path.join(first.bin, 'claude')), { code: 'ENOENT' });
+    await assert.rejects(readFile(path.join(home, 'config.json')), { code: 'ENOENT' });
+    await assert.rejects(readFile(path.join(home, 'sessions', 'old', 'state.json')), { code: 'ENOENT' });
     await uninstall(home);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

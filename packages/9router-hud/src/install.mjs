@@ -97,15 +97,20 @@ export async function install({ home, entry, only, shell = process.env.SHELL, us
   return { kinds, rc, bin };
 }
 export async function uninstall(home) {
-  if (process.platform === 'win32') return uninstallWindows(home);
-  const metadata = await read(path.join(home, 'wrapper-install.json'));
-  if (metadata) {
-    const { rcs } = JSON.parse(metadata);
-    for (const rc of rcs) await writeFile(rc, stripBlock(await read(rc)));
+  if (process.platform === 'win32') {
+    await uninstallWindows(home);
+  } else {
+    const metadata = await read(path.join(home, 'wrapper-install.json'));
+    if (metadata) {
+      const { rcs } = JSON.parse(metadata);
+      for (const rc of rcs) await writeFile(rc, stripBlock(await read(rc)));
+    }
+    for (const kind of ['claude', 'codex']) {
+      const file = path.join(home, 'bin', kind);
+      if ((await read(file)).includes(marker)) await rm(file);
+    }
+    await rm(path.join(home, 'wrapper-install.json'), { force: true });
   }
-  for (const kind of ['claude', 'codex']) {
-    const file = path.join(home, 'bin', kind);
-    if ((await read(file)).includes(marker)) await rm(file);
-  }
-  await rm(path.join(home, 'wrapper-install.json'), { force: true });
+  await rm(path.join(home, 'config.json'), { force: true });
+  await rm(path.join(home, 'sessions'), { recursive: true, force: true });
 }

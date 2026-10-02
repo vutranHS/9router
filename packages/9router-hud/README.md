@@ -84,6 +84,6 @@ The server build/dev commands package the HUD at `/downloads/9router-hud.tgz`; t
 
 Tests cover wrapper idempotency, uninstall, original CLI resolution, argument preservation, automation bypass, key/session isolation, actual chat-handler fallback/remap binding, stale quota cache, weekly-only/model-family windows, streaming proxy headers, collectors, and launcher-to-router-to-HUD flows with fixture CLIs. CI is configured for Windows, macOS and Linux, including native Windows shim invocation and PowerShell syntax checks. Live Claude/Codex, Windows Terminal/tmux, and upstream-provider validation is still required before production rollout. Windows-specific checks require the Windows CI runner and are not validated by the Linux-only local run.
 
-Run `9router-hud uninstall` before `npm uninstall -g 9router-hud`, then open a new terminal; remove the HUD configuration directory to also delete saved configuration.
+Run `9router-hud uninstall` before `npm uninstall -g 9router-hud`, then open a new terminal. Uninstall removes the wrappers, shell hooks, saved endpoint/API key and session data.
 
 Implementation references: [Claude Windows status lines](https://code.claude.com/docs/en/statusline#windows-configuration) and [Windows Terminal pane commands](https://learn.microsoft.com/en-us/windows/terminal/command-line-arguments).

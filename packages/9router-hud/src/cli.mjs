@@ -243,7 +243,7 @@ async function main() {
   }
   if (command === 'uninstall') {
     await uninstall(home);
-    console.log('Wrappers removed. Open a new terminal. Endpoint and API key configuration retained.');
+    console.log('Wrappers, sessions, endpoint and API key removed. Open a new terminal.');
     return;
   }
   if (command === 'setup') {

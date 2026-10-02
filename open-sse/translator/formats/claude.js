@@ -189,6 +189,9 @@ function buildThinkingPlaceholder(provider) {
 // turn carries a poisoned id.
 const CLAUDE_SERVER_TOOL_USE_ID = /^srvtoolu_[a-zA-Z0-9_]+$/;
 
+// thinking.display values the Anthropic Messages API accepts ("updates" is beta-gated).
+const CLAUDE_THINKING_DISPLAY = new Set(["summarized", "omitted", "updates"]);
+
 function hasForeignServerToolUseId(block) {
   return block?.type === CLAUDE_BLOCK.SERVER_TOOL_USE
     && !CLAUDE_SERVER_TOOL_USE_ID.test(String(block.id ?? ""));
@@ -196,6 +199,7 @@ function hasForeignServerToolUseId(block) {
 
 // Normalize a native Claude passthrough body to match Anthropic Messages API spec.
 // Newer Cowork/Claude Code clients emit beta-only shapes that OAuth endpoints reject:
+// 0. thinking.display client render modes (e.g. "highlights") → off-spec, rejected
 // 1. thinking.type "adaptive" → unsupported on Haiku
 // 2. output_config.effort → unsupported on Haiku
 // 3. bare content-block objects (content: {block} instead of [{block}]) → wrapped first
@@ -203,6 +207,18 @@ function hasForeignServerToolUseId(block) {
 // 5. server_tool_use blocks carrying a foreign (non-srvtoolu_) id → rejected outright
 export function normalizeClaudePassthrough(body, model = "") {
   if (!body || typeof body !== "object") return body;
+
+  // 0. Coerce any client-only thinking.display mode to a spec value.
+  // Anthropic accepts only summarized/omitted/updates; Claude Code 2.1.277+ sends its
+  // own render mode ("highlights"), and the API 400s on anything off-spec. Allowlist
+  // rather than name known modes: clients keep inventing them, and a 400 here burns a
+  // 30s cooldown per account (unmatched status → checkFallbackError default), so one
+  // unknown mode can lock the whole pool. "summarized" keeps the user's intent to see
+  // reasoning — "omitted" would blank the thinking text they asked to display.
+  if (body.thinking?.display != null && !CLAUDE_THINKING_DISPLAY.has(body.thinking.display)) {
+    // Copy-on-write: the caller's body is reused across account-fallback attempts.
+    body.thinking = { ...body.thinking, display: "summarized" };
+  }
 
   // 1. Downgrade adaptive thinking for models that don't support it
   if (body.thinking?.type === "adaptive" && ADAPTIVE_THINKING_UNSUPPORTED.test(model)) {
