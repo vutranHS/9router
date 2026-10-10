@@ -1,3 +1,10 @@
+# v0.6.1 (2026-10-10)
+
+## Features
+- **HUD mod for Claude Code** (`packages/9router-hud-mod`, installed with `/plugin install 9router-hud --marketplace vutranHS/9router`): context, account, 5h/7d quota and running tools drawn above the Claude Code prompt in every session, with no wrapper, proxy, PATH edit or statusLine override. It reads `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN` (or `ANTHROPIC_API_KEY`) from Claude's own env and polls `/v1/hud/quota` with Claude Code's session id. Needs Claude Code 2.1.275+
+- **HUD quota binding**: `recordHudSession` now also binds Claude Code's own `X-Claude-Code-Session-Id` header, not just the wrapper's `x-9router-session`, so the mod resolves quota with no proxy injecting a header. When both are present, both ids are bound to the account that served the request
+- **HUD** (v0.1.4): `setup codex` / `install codex` wraps only the named CLIs and removes a previously installed wrapper for the others, so Codex keeps the npm HUD while Claude moves to the mod. The dashboard HUD card now shows the mod install line for Claude and `setup codex` for Codex
+
 # v0.5.96 (2026-10-02)
 
 ## Fixes

@@ -58,6 +58,10 @@ export async function install({ home, entry, only, shell = process.env.SHELL, us
       try { await findBinary(kind, home, env); kinds.push(kind); } catch (e) { if (!e.message.startsWith('Cannot find original')) throw e; }
     }
     if (!kinds.length) throw new Error('Install Claude Code or Codex CLI first.');
+    for (const kind of ['claude', 'codex'].filter(k => !kinds.includes(k))) {
+      const file = path.join(home, 'bin', kind + '.cmd');
+      if ((await read(file)).includes(marker)) await rm(file);
+    }
     return installWindows({ home, entry, kinds });
   }
   const name = path.basename(shell || 'bash');
@@ -86,6 +90,9 @@ export async function install({ home, entry, only, shell = process.env.SHELL, us
   for (const kind of kinds) {
     const body = '#!/bin/sh\n' + marker + '\nexport NINE_ROUTER_HUD_HOME=' + quote(home) + '\nexec ' + quote(process.execPath) + ' ' + quote(entry) + ' auto ' + kind + ' "$@"\n';
     await writeFile(path.join(bin, kind), body, { mode: 0o755 });
+  }
+  for (const kind of ['claude', 'codex'].filter(k => !kinds.includes(k))) {
+    if ((await read(path.join(bin, kind))).includes(marker)) await rm(path.join(bin, kind));
   }
   const block = begin + '\nexport PATH=' + quote(bin) + ':"$PATH"\n' + end + '\n';
   for (const [i, file] of rcs.entries()) {

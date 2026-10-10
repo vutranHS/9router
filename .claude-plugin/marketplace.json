@@ -1,0 +1,5 @@
+{
+  "name": "9router",
+  "owner": { "name": "vutranHS" },
+  "plugins": [{ "name": "9router-hud", "source": "./packages/9router-hud-mod", "description": "9router context, account, 5h/7d quota and tools band above the prompt" }]
+}

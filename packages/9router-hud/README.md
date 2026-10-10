@@ -2,7 +2,7 @@
 
 Installable companion for Claude Code and Codex CLI. Shows context used, account email/name, remaining 5-hour/7-day quota and reset countdowns, and recent tool calls. **No selected or remapped model is displayed.**
 
-Claude uses its native status line. Codex uses a HUD pane alongside its TUI: Windows Terminal on native Windows, tmux on macOS/Linux. The Codex binary is not patched. This package is a CLI integration, not a native Codex marketplace status-line extension.
+Claude Code 2.1.275+ should use the HUD mod instead (`/plugin install 9router-hud --marketplace vutranHS/9router`, see `packages/9router-hud-mod`), and keep this package for Codex with `9router-hud setup codex`. Claude uses its native status line. Codex uses a HUD pane alongside its TUI: Windows Terminal on native Windows, tmux on macOS/Linux. The Codex binary is not patched. This package is a CLI integration, not a native Codex marketplace status-line extension.
 
 ## Install
 

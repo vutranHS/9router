@@ -76,3 +76,20 @@ test('interactive launches use HUD while automation and maintenance bypass it', 
   for (const args of [['exec', 'prompt'], ['login'], ['mcp', 'list']]) assert.equal(shouldBypass('codex', args, true, {}), true);
   for (const args of [['-p', 'prompt'], ['auth', 'login'], ['update']]) assert.equal(shouldBypass('claude', args, true, {}), true);
 });
+
+test('install with only codex removes a previously installed claude wrapper', { skip: process.platform === 'win32' }, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'hud-only-'));
+  try {
+    const userHome = path.join(root, 'user'), home = path.join(userHome, 'hud'), original = path.join(root, 'original');
+    await mkdir(userHome); await mkdir(original);
+    for (const kind of ['claude', 'codex']) await writeFile(path.join(original, kind), '#!/bin/sh\n', { mode: 0o755 });
+    const options = { home, entry, userHome, shell: '/bin/bash', env: { PATH: original } };
+    const first = await install(options);
+    assert.deepEqual(first.kinds, ['claude', 'codex']);
+    const second = await install({ ...options, only: ['codex'] });
+    assert.deepEqual(second.kinds, ['codex']);
+    await assert.rejects(readFile(path.join(first.bin, 'claude')), { code: 'ENOENT' });
+    assert.ok((await readFile(path.join(first.bin, 'codex'), 'utf8')).includes('auto codex'));
+    await uninstall(home);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

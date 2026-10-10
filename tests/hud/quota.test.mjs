@@ -71,3 +71,26 @@ test('Codex windows respect upstream duration and model quota family', () => {
   assert.equal(loneNoDuration.five_hour.used_percentage, 10);
   assert.equal(loneNoDuration.seven_day, null);
 });
+
+test('recordHudSession falls back to Claude Code session header', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'hud-cc-'));
+  process.env.DATA_DIR = dir;
+  try {
+    const { recordHudSession, hudSessions } = await import('../../src/lib/hud/session.js');
+    const id = '0f8fad5b-d9cb-469f-a165-70867728950e';
+    await recordHudSession(new Request('http://r/v1/messages', { headers: { 'x-claude-code-session-id': id } }), 'key-a', 'account-a', 'm');
+    assert.equal((await hudSessions.read('key-a', id))?.connectionId, 'account-a');
+  } finally { delete process.env.DATA_DIR; await rm(dir, { recursive: true, force: true }); }
+});
+
+test('recordHudSession binds both wrapper and Claude Code session ids', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'hud-both-'));
+  process.env.DATA_DIR = dir;
+  try {
+    const { recordHudSession, hudSessions } = await import('../../src/lib/hud/session.js?both');
+    const cc = '1f8fad5b-d9cb-469f-a165-70867728950e', wrap = 'wrapper-session-123456';
+    await recordHudSession(new Request('http://r/v1/messages', { headers: { 'x-claude-code-session-id': cc, 'x-9router-session': wrap } }), 'key-a', 'account-b', 'm');
+    assert.equal((await hudSessions.read('key-a', cc))?.connectionId, 'account-b');
+    assert.equal((await hudSessions.read('key-a', wrap))?.connectionId, 'account-b');
+  } finally { delete process.env.DATA_DIR; await rm(dir, { recursive: true, force: true }); }
+});

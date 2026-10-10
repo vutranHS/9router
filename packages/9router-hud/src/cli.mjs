@@ -43,6 +43,14 @@ async function config(kind) {
   return { base: routerBase(base), key };
 }
 // install/setup validation: at least one CLI must be resolvable.
+// `install codex` / `setup codex`: wrap only the named CLIs (e.g. Claude uses the HUD mod instead).
+const pick = (kinds, args) => {
+  const named = args.filter(a => ['claude', 'codex'].includes(a));
+  if (!named.length) return kinds;
+  const chosen = kinds.filter(k => named.includes(k));
+  if (!chosen.length) throw new Error('No 9router endpoint detected for ' + named.join(', ') + '.');
+  return chosen;
+};
 async function ensureConfigured() {
   const kinds = ['claude', 'codex'];
   const results = await Promise.all(kinds.map(k => config(k).then(c => ({ k, c })).catch(() => null)));
@@ -233,7 +241,7 @@ async function main() {
   const args = raw[0] === '--' ? raw.slice(1) : raw;
   if (command === 'install') {
     const configured = await ensureConfigured();
-    const only = configured.map(d => d.k);
+    const only = pick(configured.map(d => d.k), args);
     const result = await install({ home, entry, only });
     console.log('Installed wrappers: ' + result.kinds.join(', ') + '. Open a new terminal, then type claude or codex.');
     const skipped = ['claude', 'codex'].filter(k => !only.includes(k));
@@ -269,7 +277,7 @@ async function main() {
       detected = await ensureConfigured();
     }
     for (const { k, c } of detected) console.log('Detected ' + k + ' endpoint: ' + c.base);
-    const only = detected.map(({ k }) => k);
+    const only = pick(detected.map(({ k }) => k), args);
     const result = await install({ home, entry, only });
     console.log('Setup complete: ' + result.kinds.join(', ') + '. Open a new terminal, then type claude or codex.');
     const skipped = ['claude', 'codex'].filter(k => !only.includes(k));

@@ -1,0 +1,9 @@
+{
+  "name": "9router-hud",
+  "version": "0.6.1",
+  "description": "9router context, account, 5h/7d quota and tools band above the prompt",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "vutranHS"
+  }
+}
