@@ -10,7 +10,7 @@ const hud = atom({ plugin: '9router-hud', key: 'hud' } as const, { quota: null, 
 async function refresh($: EngineInterface) {
   const url = await $.env.get('ANTHROPIC_BASE_URL')
   const key = (await $.env.get('ANTHROPIC_AUTH_TOKEN')) || (await $.env.get('ANTHROPIC_API_KEY'))
-  if (!url || !key) return
+  if (!url || !key) return subscription($)
   const base = url.replace(/\/+$/, '').replace(/\/v1$/, '')
   const session = await $.session.id()
   try {
@@ -20,6 +20,17 @@ async function refresh($: EngineInterface) {
   } catch {
     await update($, hud, s => ({ ...s, offline: true }))
   }
+}
+
+// Subscription login (no custom endpoint): quota comes from Claude's own rate-limit
+// headers at render time; the account is the logged-in OAuth email.
+async function subscription($: EngineInterface) {
+  const dir = (await $.env.get('CLAUDE_CONFIG_DIR'))?.split(':')[0] || (await $.env.get('HOME'))
+  let label = 'Claude subscription'
+  try {
+    label = JSON.parse(await $.fs.read(`${dir}/.claude.json`)).oauthAccount?.emailAddress || label
+  } catch {}
+  await update($, hud, s => ({ ...s, offline: false, quota: { status: 'ok', account: { label } } }))
 }
 
 export function left(w: Window | undefined, now: number) {
@@ -64,7 +75,11 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const s = await read($, hud)
-    const { context } = await $.session.usage()
+    const { context, rateLimits } = await $.session.usage()
+    const limit = (kind: string): Window | undefined => {
+      const r = rateLimits.find(l => l.kind === kind)
+      return r ? { used_percentage: r.percentUsed, resets_at: r.resetsAt ?? null } : undefined
+    }
     const now = await $.clock.now()
     const { Box, Text } = $.ui.resolve(e)
     const q = s.quota ?? {}
@@ -90,9 +105,9 @@ export const register: Register = on => {
           {status ? <Text color="warning"> · {status}</Text> : null}
         </Text>
         <Text wrap="truncate">
-          {win('5h', q.five_hour)}
+          {win('5h', q.five_hour ?? limit('five_hour'))}
           <Text dimColor> · </Text>
-          {win('7d', q.seven_day)}
+          {win('7d', q.seven_day ?? limit('seven_day'))}
           {age != null ? <Text dimColor> · updated {age}m ago</Text> : null}
         </Text>
         <Text wrap="truncate">
