@@ -55,9 +55,12 @@ const COOLDOWN = {
  *   - status: HTTP status code match
  *   - cooldownMs: fixed cooldown duration
  *   - backoff: true = use exponential backoff (rate limit)
+ *   - fallback: false = the request itself is bad; return it to the client and lock nothing
  */
 export const ERROR_RULES = [
   // --- Text-based rules (checked first, order = priority) ---
+  // A broken image in one client's history fails on every account; locking would 503 everyone else.
+  { text: "could not process image",  fallback: false },
   { text: "no credentials",           cooldownMs: COOLDOWN.long },
   { text: "request not allowed",      cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },

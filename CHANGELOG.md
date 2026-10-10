@@ -1,3 +1,8 @@
+# v0.6.2 (2026-10-10)
+
+## Fixes
+- **Account fallback**: an upstream `400 Could not process image` no longer locks the account. It is a fault in one client's request (a broken image in that session's history), so every account fails it the same way. Before, it fell through `checkFallbackError` to the default transient branch: each retry locked the account for 30s and walked to the next, so one client re-sending a bad image every ~30s kept the whole Claude pool locked and other users got `503 ... (reset after 25s)` on ordinary prompts. Rules can now set `fallback: false` to return the error to the caller without locking or switching accounts
+
 # v0.6.1 (2026-10-10)
 
 ## Features
