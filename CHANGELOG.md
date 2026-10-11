@@ -1,3 +1,8 @@
+# v0.6.3 (2026-10-11)
+
+## Changes
+- **Codex identity**: bump `CODEX_CLI_VERSION` from `0.154.0` to `0.162.1`, so the `Version` and `User-Agent: codex_cli_rs/…` headers sent to `chatgpt.com/backend-api/codex` match the current Codex CLI
+
 # v0.6.2 (2026-10-10)
 
 ## Fixes
