@@ -1,3 +1,8 @@
+# v0.6.4 (2026-10-30)
+
+## Security
+- **Next.js 16.4.0 → 16.4.3** (floor raised to `^16.4.3` so a fresh `npm install` can't resolve a vulnerable 16.4.0): fixes the 2026-10-14 advisories — unauthenticated RCE in the Image Optimization API with SVG files (CVE-2026-96889), unauthenticated RCE in `use cache` functions returning typed arrays, and DoS in App Router via Server Actions. 9router sets `images.unoptimized` and doesn't use `use cache`, so the DoS was the one actually reachable
+
 # v0.6.3 (2026-10-11)
 
 ## Changes
